@@ -1,7 +1,6 @@
 import "server-only";
 import { formatCurrency, toNumber } from "../format/currency";
 import { parseInstallment } from "../format/installment";
-import { syncCardRollover } from "./cardRollover";
 import { fetchMonthGrids } from "./gridIO";
 import { locateTables } from "./locateTables";
 import { extractRawRows } from "./rowExtraction";
@@ -24,12 +23,11 @@ function sum(rows: { valor: number }[]): number {
   return rows.reduce((acc, row) => acc + row.valor, 0);
 }
 
+/**
+ * Read-only: rendering a month never writes to the sheet. The "Cartão de crédito" rollover row is
+ * kept in sync by the explicit `syncCardRolloverAction`, which the month screen fires after it mounts.
+ */
 export async function readMonth(spreadsheetId: string, year: string, monthTitle: string): Promise<MonthData> {
-  // Self-heal the "Cartão de crédito" rollover row before reading Débitos, so it's always
-  // in sync with the previous month's Nubank total — whether that changed since the last
-  // visit, or this month's tab was only just created.
-  await syncCardRollover(spreadsheetId, year, monthTitle);
-
   const { formatted, raw } = await fetchMonthGrids(spreadsheetId, monthTitle);
   const located = locateTables(formatted);
 

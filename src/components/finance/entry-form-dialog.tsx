@@ -121,7 +121,9 @@ export function EntryFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden sm:max-w-md [&>[data-slot=dialog-close]]:text-white [&>[data-slot=dialog-close]]:hover:bg-white/15">
+      <DialogContent
+        className="max-h-[92dvh] overflow-y-auto max-sm:top-auto max-sm:bottom-0 max-sm:left-0 max-sm:max-w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:data-open:slide-in-from-bottom-10 sm:max-w-md [&>[data-slot=dialog-close]]:text-white [&>[data-slot=dialog-close]]:hover:bg-white/15"
+      >
         {/* Full-bleed header in the table's color, so each form is recognizable at a glance. */}
         <DialogHeader
           className="-mx-4 -mt-4 flex-row items-center gap-3 px-4 py-4 pr-12 text-white"
@@ -142,7 +144,7 @@ export function EntryFormDialog({
             <div className="flex flex-col gap-2">
               <Label>Tipo</Label>
               <Select value={tableId} onValueChange={(value) => selectVoucherTable(value as TableId)}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="h-11 w-full text-base">
                   <SelectValue>{VOUCHER_TABLES.find((option) => option.tableId === tableId)?.label}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -174,6 +176,7 @@ export function EntryFormDialog({
                   <Input
                     id="name"
                     required
+                    className="h-11 text-base"
                     value={String(values.name ?? "")}
                     onChange={(event) => setField("name", event.target.value)}
                   />
@@ -183,7 +186,7 @@ export function EntryFormDialog({
                 <>
                   <Label>Categoria</Label>
                   <Select value={String(values.category ?? "")} onValueChange={(value) => setField("category", value)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="h-11 w-full text-base">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
@@ -200,7 +203,7 @@ export function EntryFormDialog({
                 <>
                   <Label>Quem</Label>
                   <Select value={String(values.quem ?? "")} onValueChange={(value) => setField("quem", value)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="h-11 w-full text-base">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
@@ -230,7 +233,7 @@ export function EntryFormDialog({
                     type="number"
                     min={1}
                     max={12}
-                    className="w-20"
+                    className="h-11 w-20"
                     value={installments}
                     onChange={(event) => setInstallments(Math.max(1, Number(event.target.value) || 1))}
                   />
@@ -250,11 +253,11 @@ export function EntryFormDialog({
               )}
             </div>
           ))}
-          <DialogFooter>
+          <DialogFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
             <Button
               type="submit"
               disabled={pending}
-              className="text-white hover:opacity-90"
+              className="h-11 w-full text-base text-white hover:opacity-90 sm:w-auto"
               style={{ backgroundColor: theme.color }}
             >
               {pending ? "Salvando..." : "Salvar"}

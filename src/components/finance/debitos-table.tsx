@@ -4,12 +4,13 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { DebitoRow } from "@/lib/sheets/types";
 import { EntryFormDialog } from "./entry-form-dialog";
+import { EntryList } from "./entry-list";
 import { EntryRow } from "./entry-row";
 import { TableFooterStats } from "./table-footer-stats";
-import { TableSectionHeader } from "./table-section-header";
 import { TABLE_HEADER_COLORS } from "./table-colors";
+import { TableSectionHeader } from "./table-section-header";
 import { TagBadge } from "./tag-badge";
-import { useRowActions } from "./use-row-actions";
+import { useOptimisticChecked, useRowActions } from "./use-row-actions";
 
 export function DebitosTable({
   rows,
@@ -23,24 +24,26 @@ export function DebitosTable({
   categories: string[];
 }) {
   const [editing, setEditing] = useState<DebitoRow | null>(null);
-  const { toggle, remove, pending } = useRowActions("debitos", year, month);
+  const [optimisticRows, applyOptimisticToggle] = useOptimisticChecked(rows, "pago");
+  const { toggle, remove, pending } = useRowActions("debitos", year, month, applyOptimisticToggle);
 
   const totals = useMemo(() => {
-    const total = rows.reduce((acc, row) => acc + row.valor, 0);
-    const pago = rows.filter((row) => row.pago).reduce((acc, row) => acc + row.valor, 0);
+    const total = optimisticRows.reduce((acc, row) => acc + row.valor, 0);
+    const pago = optimisticRows.filter((row) => row.pago).reduce((acc, row) => acc + row.valor, 0);
     return { pago, aPagar: total - pago, total };
-  }, [rows]);
+  }, [optimisticRows]);
 
   return (
     <section className="flex flex-col gap-3">
       <TableSectionHeader title="Débitos" count={rows.length} />
-      <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-        {rows.length === 0 && <p className="px-4 py-6 text-sm text-foreground-secondary">Nenhum lançamento ainda.</p>}
-        {rows.map((row) => (
+      <EntryList
+        rows={optimisticRows}
+        filterable
+        emptyMessage="Nenhum lançamento ainda."
+        renderRow={(row) => (
           <EntryRow
-            key={row.rowIndex}
             title={row.name}
-            meta={`${row.categoria} · ${row.quem} · ${row.date}`}
+            meta={`${row.categoria} · ${row.quem}`}
             valor={row.valor}
             accent={TABLE_HEADER_COLORS.debitos}
             badges={
@@ -61,8 +64,8 @@ export function DebitosTable({
             onDelete={() => remove(row.rowIndex)}
             disabled={pending}
           />
-        ))}
-      </div>
+        )}
+      />
       <TableFooterStats
         stats={[
           { label: "Pago", value: totals.pago },

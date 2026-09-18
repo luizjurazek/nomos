@@ -29,6 +29,7 @@ export function DateInput({ id, value, onChange, defaultMonth, defaultYear }: Da
         <Input
           id={id}
           type="date"
+          className="h-11 text-base"
           value={isoValue}
           onChange={(event) => {
             const [year, month, day] = event.target.value.split("-");
@@ -43,7 +44,7 @@ export function DateInput({ id, value, onChange, defaultMonth, defaultYear }: Da
             type="number"
             min={1}
             max={12}
-            className="w-20"
+            className="h-11 w-20 text-base"
             value={Number(parsed.month)}
             onChange={(event) => {
               const month = event.target.value.padStart(2, "0");
@@ -53,7 +54,7 @@ export function DateInput({ id, value, onChange, defaultMonth, defaultYear }: Da
           <Input
             aria-label="Ano"
             type="number"
-            className="w-28"
+            className="h-11 w-28 text-base"
             value={Number(parsed.year)}
             onChange={(event) => {
               onChange(`${UNKNOWN_DAY_PLACEHOLDER}/${parsed.month}/${event.target.value}`);

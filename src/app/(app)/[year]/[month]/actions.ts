@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { syncCardRollover } from "@/lib/sheets/cardRollover";
 import { createRow, deleteRow, updateCell, updateRow } from "@/lib/sheets/writeRow";
 import { getSpreadsheetId } from "@/lib/sheets/spreadsheetRegistry";
 import { MONTH_NAMES, getMonthNumber } from "@/lib/sheets/monthNames";
@@ -98,4 +99,15 @@ export async function toggleChecked(
   const spreadsheetId = getSpreadsheetId(year);
   await updateCell(spreadsheetId, month, tableId, rowIndex, "checkbox", value);
   revalidateMonth(year, month);
+}
+
+/**
+ * Keeps the "Cartão de crédito" row in Débitos equal to the previous month's Nubank total. Fired by
+ * the month screen after it mounts (instead of during render), and only refreshes the page when the
+ * sheet actually changed.
+ */
+export async function syncCardRolloverAction(year: string, month: string): Promise<void> {
+  const spreadsheetId = getSpreadsheetId(year);
+  const changed = await syncCardRollover(spreadsheetId, year, month);
+  if (changed) revalidateMonth(year, month);
 }

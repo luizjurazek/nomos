@@ -20,6 +20,7 @@ export function CurrencyInput({ id, name, value, onChange, placeholder = "R$ 0,0
       id={id}
       name={name}
       inputMode="numeric"
+      className="h-11 text-base"
       placeholder={placeholder}
       value={display}
       onChange={(event) => {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -41,9 +42,27 @@ export function YearMonthSwitcher({ years, activeYear, activeMonth }: YearMonthS
     activeRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
   }, [months, activeMonth]);
 
+  // The target year may not have the current month's tab (yet), so ask which months it has:
+  // keep the same month when it exists, otherwise land on the latest one.
+  const goToYear = async (year: string | null) => {
+    if (!year) return;
+    try {
+      const res = await fetch(`/api/years/${year}/months`);
+      const data: { months: string[] } = await res.json();
+      if (data.months.length === 0) {
+        toast.error(`Não há meses disponíveis em ${year}.`);
+        return;
+      }
+      const month = data.months.includes(activeMonth) ? activeMonth : data.months[data.months.length - 1];
+      router.push(`/${year}/${month}`);
+    } catch {
+      toast.error("Não foi possível trocar de ano.");
+    }
+  };
+
   return (
     <div className="flex items-center gap-2">
-      <Select value={activeYear} onValueChange={(year) => router.push(`/${year}/${activeMonth}`)}>
+      <Select value={activeYear} onValueChange={goToYear}>
         <SelectTrigger className="w-[84px] shrink-0 rounded-full" aria-label="Ano">
           <SelectValue />
         </SelectTrigger>

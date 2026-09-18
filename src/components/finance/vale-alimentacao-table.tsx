@@ -5,11 +5,12 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { ValeAlimentacaoConsumoRow, ValeAlimentacaoCreditoRow } from "@/lib/sheets/types";
 import { EntryFormDialog } from "./entry-form-dialog";
+import { EntryList } from "./entry-list";
 import { EntryRow } from "./entry-row";
 import { TABLE_HEADER_COLORS } from "./table-colors";
 import { TableFooterStats } from "./table-footer-stats";
 import { TableSectionHeader } from "./table-section-header";
-import { useRowActions } from "./use-row-actions";
+import { useOptimisticChecked, useRowActions } from "./use-row-actions";
 
 export function ValeAlimentacaoTable({
   credito,
@@ -25,14 +26,16 @@ export function ValeAlimentacaoTable({
   const [editingCredito, setEditingCredito] = useState<ValeAlimentacaoCreditoRow | null>(null);
   const [editingConsumo, setEditingConsumo] = useState<ValeAlimentacaoConsumoRow | null>(null);
   const [creatingCredito, setCreatingCredito] = useState(false);
-  const creditoActions = useRowActions("valeAlimentacaoCredito", year, month);
-  const consumoActions = useRowActions("valeAlimentacaoConsumo", year, month);
+  const [optimisticCredito, applyCreditoToggle] = useOptimisticChecked(credito, "recebido");
+  const [optimisticConsumo, applyConsumoToggle] = useOptimisticChecked(consumo, "pago");
+  const creditoActions = useRowActions("valeAlimentacaoCredito", year, month, applyCreditoToggle);
+  const consumoActions = useRowActions("valeAlimentacaoConsumo", year, month, applyConsumoToggle);
 
   const totals = useMemo(() => {
-    const recebido = credito.reduce((acc, row) => acc + row.valor, 0);
-    const gasto = consumo.filter((row) => row.pago).reduce((acc, row) => acc + row.valor, 0);
+    const recebido = optimisticCredito.reduce((acc, row) => acc + row.valor, 0);
+    const gasto = optimisticConsumo.filter((row) => row.pago).reduce((acc, row) => acc + row.valor, 0);
     return { recebido, gasto, saldo: recebido - gasto };
-  }, [credito, consumo]);
+  }, [optimisticCredito, optimisticConsumo]);
 
   return (
     <section className="flex flex-col gap-3">
@@ -53,15 +56,13 @@ export function ValeAlimentacaoTable({
               </Button>
             }
           />
-          <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-            {credito.length === 0 && (
-              <p className="px-4 py-6 text-sm text-foreground-secondary">Nada recebido ainda.</p>
-            )}
-            {credito.map((row) => (
+          <EntryList
+            rows={optimisticCredito}
+            emptyMessage="Nada recebido ainda."
+            renderRow={(row) => (
               <EntryRow
-                key={row.rowIndex}
                 title={row.name}
-                meta={`${row.quem} · ${row.date}`}
+                meta={row.quem}
                 valor={row.valor}
                 accent={TABLE_HEADER_COLORS.valeAlimentacaoCredito}
                 checked={row.recebido}
@@ -72,8 +73,8 @@ export function ValeAlimentacaoTable({
                 onDelete={() => creditoActions.remove(row.rowIndex)}
                 disabled={creditoActions.pending}
               />
-            ))}
-          </div>
+            )}
+          />
         </div>
 
         <div className="flex flex-col gap-2">
@@ -81,15 +82,13 @@ export function ValeAlimentacaoTable({
             title="Gastos"
             count={consumo.length}
           />
-          <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-            {consumo.length === 0 && (
-              <p className="px-4 py-6 text-sm text-foreground-secondary">Nenhum gasto ainda.</p>
-            )}
-            {consumo.map((row) => (
+          <EntryList
+            rows={optimisticConsumo}
+            emptyMessage="Nenhum gasto ainda."
+            renderRow={(row) => (
               <EntryRow
-                key={row.rowIndex}
                 title={row.name}
-                meta={`${row.quem} · ${row.date}`}
+                meta={row.quem}
                 valor={row.valor}
                 accent={TABLE_HEADER_COLORS.valeAlimentacaoConsumo}
                 checked={row.pago}
@@ -100,8 +99,8 @@ export function ValeAlimentacaoTable({
                 onDelete={() => consumoActions.remove(row.rowIndex)}
                 disabled={consumoActions.pending}
               />
-            ))}
-          </div>
+            )}
+          />
         </div>
       </div>
       <TableFooterStats

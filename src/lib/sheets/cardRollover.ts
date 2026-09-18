@@ -42,14 +42,16 @@ async function sumPreviousMonthNubank(year: string, monthTitle: string): Promise
  * previous month's Nubank purchases. Idempotent and safe to call often: no-ops when the value
  * already matches, updates just the Valor cell when the row exists but is stale, and creates
  * the row (via the normal createRow slot-or-insert logic) when it's missing entirely.
+ * Resolves to true when it wrote to the sheet, so callers only refresh the UI when something changed.
+ * This is a write: never call it while rendering a page, only from an explicit action.
  */
-export async function syncCardRollover(spreadsheetId: string, year: string, monthTitle: string): Promise<void> {
+export async function syncCardRollover(spreadsheetId: string, year: string, monthTitle: string): Promise<boolean> {
   const previousTotal = await sumPreviousMonthNubank(year, monthTitle);
-  if (previousTotal === null) return;
+  if (previousTotal === null) return false;
 
   const { formatted, raw } = await fetchMonthGrids(spreadsheetId, monthTitle);
   const located = locateTables(formatted);
-  if (!located.debitos) return;
+  if (!located.debitos) return false;
 
   const debitoRows = extractRawRows(raw, located.debitos, TABLE_CONFIGS.debitos.columnOrder);
   const existing = debitoRows.find(
@@ -62,8 +64,9 @@ export async function syncCardRollover(spreadsheetId: string, year: string, mont
     const currentValue = Math.round(toNumber(existing.values.valor) * 100) / 100;
     if (currentValue !== roundedTotal) {
       await updateCell(spreadsheetId, monthTitle, "debitos", existing.rowIndex, "valor", roundedTotal);
+      return true;
     }
-    return;
+    return false;
   }
 
   await createRow(spreadsheetId, monthTitle, "debitos", {
@@ -74,4 +77,5 @@ export async function syncCardRollover(spreadsheetId: string, year: string, mont
     valor: roundedTotal,
     checkbox: false,
   });
+  return true;
 }
