@@ -141,6 +141,26 @@
   }
 }
 
+/*
+ * Pointer cursor on everything clickable. Tailwind v4 resets buttons to the default cursor, and the
+ * menu/select items carry an explicit `cursor-default`. This rule is deliberately outside any @layer:
+ * unlayered CSS beats the utilities layer, so it also wins over those. Disabled controls are excluded.
+ */
+button:not(:disabled):not([aria-disabled="true"]):not([data-disabled]),
+[role="button"]:not([aria-disabled="true"]):not([data-disabled]),
+[role="menuitem"]:not([aria-disabled="true"]):not([data-disabled]),
+[role="option"]:not([aria-disabled="true"]):not([data-disabled]),
+[role="tab"]:not([aria-disabled="true"]):not([data-disabled]),
+[role="checkbox"]:not([aria-disabled="true"]):not([data-disabled]),
+[role="radio"]:not([aria-disabled="true"]):not([data-disabled]),
+[role="switch"]:not([aria-disabled="true"]):not([data-disabled]),
+a[href],
+summary,
+select:not(:disabled),
+label:has([role="checkbox"], input[type="checkbox"], input[type="radio"]) {
+  cursor: pointer;
+}
+
 .glass-surface {
   background: var(--glass);
   backdrop-filter: blur(20px);
@@ -160,4 +180,59 @@
 
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+/*
+ * Analysis page colors (validated with scripts/validate_palette.js, light and dark).
+ * --cat-*: categorical palette for categories in the stacked chart; --cat-other for "Outras".
+ * --heat-*: five-step one-hue ramps for the category heat map, lowest to highest value, plus the
+ *   text color that stays readable on each step.
+ */
+:root {
+  --cat-1: #2a78d6;
+  --cat-2: #eb6834;
+  --cat-3: #1baf7a;
+  --cat-4: #eda100;
+  --cat-5: #e87ba4;
+  --cat-6: #008300;
+  --cat-other: #9a9a9f;
+  --heat-red-0: #ef9b91;
+  --heat-red-1: #d97369;
+  --heat-red-2: #c24a42;
+  --heat-red-3: #aa1117;
+  --heat-red-4: #7c0109;
+  --heat-blue-0: #96b5ec;
+  --heat-blue-1: #7095d8;
+  --heat-blue-2: #4b75c4;
+  --heat-blue-3: #2655b0;
+  --heat-blue-4: #063592;
+  --heat-text-0: #1c1c1e;
+  --heat-text-1: #1c1c1e;
+  --heat-text-2: #1c1c1e;
+  --heat-text-3: #ffffff;
+  --heat-text-4: #ffffff;
+}
+
+.dark {
+  --cat-1: #3987e5;
+  --cat-2: #d95926;
+  --cat-3: #199e70;
+  --cat-4: #c98500;
+  --cat-5: #d55181;
+  --cat-6: #008300;
+  --cat-other: #7c7c82;
+  --heat-red-0: #a70411;
+  --heat-red-1: #bb3c36;
+  --heat-red-2: #d3675d;
+  --heat-red-3: #e98f85;
+  --heat-red-4: #fdb6ad;
+  --heat-blue-0: #2351ad;
+  --heat-blue-1: #406bbe;
+  --heat-blue-2: #658bd2;
+  --heat-blue-3: #8babe6;
+  --heat-blue-4: #b2cbfa;
+  --heat-text-0: #ffffff;
+  --heat-text-1: #ffffff;
+  --heat-text-2: #1a1a19;
+  --heat-text-3: #1a1a19;
+  --heat-text-4: #1a1a19;
 }

@@ -13,6 +13,12 @@ export interface MonthPoint {
   cartao: number;
   /** Entradas − Débitos − Cartão; null when entradas/débitos are unknown. */
   saldo: number | null;
+  /** Money put aside: débitos in the savings categories (Investimentos, Res. Emergência). Null past the last tab. */
+  aportes: number | null;
+  /** Money taken out of the reserve (Entradas in "Res. Emergência"). Null past the last tab. */
+  retiradas: number | null;
+  /** Net saved in the month: aportes − retiradas. */
+  poupado: number | null;
   /** Future month (planned values) or a month past the last tab (installments only). */
   projected: boolean;
   source: "sheet" | "installments";
@@ -46,6 +52,8 @@ export function buildTimeline(months: AnalysisMonth[], now: Now): MonthPoint[] {
     const entradas = sumValues(month.entradas);
     const debitos = sumValues(month.debitos.filter((row) => !row.isCardRollover));
     const cartao = cardBillFor(byKey, month);
+    const aportes = sumValues(month.debitos.filter((row) => row.isTransfer));
+    const retiradas = sumValues(month.entradas.filter((row) => row.isTransfer));
     return {
       key: monthKey(month),
       year: month.year,
@@ -54,6 +62,9 @@ export function buildTimeline(months: AnalysisMonth[], now: Now): MonthPoint[] {
       debitos,
       cartao,
       saldo: entradas - debitos - cartao,
+      aportes,
+      retiradas,
+      poupado: aportes - retiradas,
       projected: isAfterNow(month, now),
       source: "sheet",
     };
@@ -72,6 +83,9 @@ export function buildTimeline(months: AnalysisMonth[], now: Now): MonthPoint[] {
       debitos: null,
       cartao,
       saldo: null,
+      aportes: null,
+      retiradas: null,
+      poupado: null,
       projected: true,
       source: "installments",
     });
@@ -97,6 +111,14 @@ export function pickReferenceMonth(months: AnalysisMonth[], now: Now): AnalysisM
 export interface PeriodSummary {
   months: number;
   saldoTotal: number;
+  /** Net saved over the period (aportes − retiradas). */
+  poupadoTotal: number;
+  aportesTotal: number;
+  retiradasTotal: number;
+  /** Real income over the period: entradas minus reserve withdrawals (those are your own money coming back). */
+  realIncome: number;
+  /** Net saved as a fraction of real income; null when there is none. */
+  poupadoRate: number | null;
   avgEntradas: number;
   avgSaidas: number;
   tightest: MonthPoint | null;
@@ -112,9 +134,17 @@ export function summarizePeriod(points: MonthPoint[]): PeriodSummary {
     (worst, point) => (worst === null || (point.saldo ?? 0) < (worst.saldo ?? 0) ? point : worst),
     null,
   );
+  const aportesTotal = full.reduce((acc, point) => acc + (point.aportes ?? 0), 0);
+  const retiradasTotal = full.reduce((acc, point) => acc + (point.retiradas ?? 0), 0);
+  const realIncome = totalEntradas - retiradasTotal;
   return {
     months: count,
     saldoTotal: full.reduce((acc, point) => acc + (point.saldo ?? 0), 0),
+    poupadoTotal: aportesTotal - retiradasTotal,
+    aportesTotal,
+    retiradasTotal,
+    realIncome,
+    poupadoRate: realIncome > 0 ? (aportesTotal - retiradasTotal) / realIncome : null,
     avgEntradas: count ? totalEntradas / count : 0,
     avgSaidas: count ? totalSaidas / count : 0,
     tightest,

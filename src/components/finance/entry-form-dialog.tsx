@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CurrencyInput } from "./currency-input";
 import { DateInput } from "./date-input";
 import { TABLE_THEME } from "./table-theme";
+import { isValidSheetDate } from "@/lib/format/date";
 import { getMonthNumber } from "@/lib/sheets/monthNames";
 import { TABLE_CONFIGS } from "@/lib/sheets/tableConfigs";
 import type { ColumnRole, SheetCell, TableId } from "@/lib/sheets/types";
@@ -100,6 +101,10 @@ export function EntryFormDialog({
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (config.columnOrder.includes("date") && !isValidSheetDate(String(values.date ?? ""))) {
+      toast.error("Informe uma data válida (dd/mm/aaaa).");
+      return;
+    }
     if (config.columnOrder.includes("quem") && !values.quem) {
       toast.error("Selecione quem.");
       return;

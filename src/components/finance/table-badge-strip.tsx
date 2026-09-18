@@ -5,7 +5,7 @@ import { TABLE_TABS, type TableSlug } from "./table-tabs";
 /** Horizontally scrollable badges that switch which table is listed below. */
 export function TableBadgeStrip({ active, onChange }: { active: TableSlug; onChange: (slug: TableSlug) => void }) {
   return (
-    <div className="-mx-4 flex gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none] sm:-mx-6 sm:px-6 [&::-webkit-scrollbar]:hidden">
+    <div className="-mx-4 flex gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
       {TABLE_TABS.map((tab) => {
         const isActive = tab.slug === active;
         return (

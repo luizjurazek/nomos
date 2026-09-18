@@ -1,10 +1,17 @@
 /** Skeleton shown while a month is read from Google Sheets, so switching months never looks frozen. */
 export default function MonthLoading() {
   return (
-    <div className="flex animate-pulse flex-col gap-3" aria-busy="true" aria-label="Carregando o mês">
-      <div className="h-36 rounded-3xl bg-muted" />
-      <div className="h-14 rounded-2xl bg-muted" />
-      <div className="h-12 rounded-2xl bg-muted" />
+    <div
+      className="grid animate-pulse gap-3 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] lg:items-start lg:gap-6"
+      aria-busy="true"
+      aria-label="Carregando o mês"
+    >
+      <div className="flex flex-col gap-3">
+        <div className="h-36 rounded-3xl bg-muted" />
+        <div className="h-14 rounded-2xl bg-muted" />
+        <div className="h-12 rounded-2xl bg-muted" />
+      </div>
+      <div className="flex min-w-0 flex-col gap-3">
       <div className="flex gap-2 py-2">
         {[24, 20, 32, 20].map((width, index) => (
           <div key={index} className="h-9 rounded-full bg-muted" style={{ width: `${width * 4}px` }} />
@@ -24,6 +31,7 @@ export default function MonthLoading() {
             </div>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );

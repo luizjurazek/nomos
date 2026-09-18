@@ -2,7 +2,10 @@
 
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { SAVINGS_COLOR } from "@/components/analysis/colors";
+import { shortRefLabel } from "@/components/analysis/labels";
 import { formatCurrency } from "@/lib/format/currency";
+import type { SavingsSummary } from "@/lib/analysis/savings";
 import type { MonthKpis } from "@/lib/sheets/types";
 import { TABLE_HEADER_COLORS } from "./table-colors";
 
@@ -22,7 +25,7 @@ interface SummarySection {
 }
 
 /** Collapsible month summary (closed by default): every KPI grouped by section, each row with a colored dot. */
-export function MonthSummaryDropdown({ kpis }: { kpis: MonthKpis }) {
+export function MonthSummaryDropdown({ kpis, savings }: { kpis: MonthKpis; savings: SavingsSummary }) {
   const [open, setOpen] = useState(false);
 
   const vaColor = TABLE_HEADER_COLORS.valeAlimentacaoConsumo;
@@ -46,6 +49,17 @@ export function MonthSummaryDropdown({ kpis }: { kpis: MonthKpis }) {
       rows: [
         { label: "Saldo atual", value: kpis.saldoAtual, color: "var(--primary)" },
         { label: "Saldo final", value: kpis.saldoFinal, color: "var(--primary)", faded: true, emphasis: true },
+      ],
+    },
+    {
+      title: "Poupado",
+      note: "Já descontadas as retiradas da reserva",
+      rows: [
+        { label: "No mês", value: savings.month, color: SAVINGS_COLOR },
+        // Null when the history of earlier months couldn't be read: better no total than a wrong one.
+        ...(savings.total === null
+          ? []
+          : [{ label: `Total até ${shortRefLabel(savings.through)}`, value: savings.total, color: SAVINGS_COLOR, emphasis: true }]),
       ],
     },
     {

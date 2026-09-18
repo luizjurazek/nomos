@@ -20,3 +20,12 @@ export function formatAxisBRL(value: number): string {
 export function formatPercent(fraction: number): string {
   return `${Math.round(fraction * 100)}%`;
 }
+
+/** "850", "1,2 mil", "12 mil": short numbers for heat map cells, no currency symbol. */
+export function formatCompact(value: number): string {
+  const abs = Math.abs(value);
+  if (abs < 1000) return String(Math.round(value));
+  const thousands = value / 1000;
+  const text = Math.abs(thousands) >= 10 ? String(Math.round(thousands)) : thousands.toFixed(1).replace(".", ",").replace(",0", "");
+  return `${text} mil`;
+}

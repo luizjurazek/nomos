@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { categoryBreakdown, categorySeries } from "../analysis/categories";
+import { categoryBreakdown, categoryBreakdownForPeriod, categoryMatrix, categorySeries } from "../analysis/categories";
 import { baseName, freedByMonth, listInstallmentPlans } from "../analysis/installments";
 import { addMonths, monthKey, refFromKey } from "../analysis/months";
 import { parseMonth } from "../analysis/parseMonth";
+import { monthDataNet, summarizeSavings } from "../analysis/savings";
 import { buildTimeline, pickReferenceMonth, summarizePeriod } from "../analysis/timeline";
 import type { AnalysisDebito, AnalysisEntrada, AnalysisMonth, AnalysisNubank } from "../analysis/types";
 import type { SheetGrid } from "../sheets/types";
@@ -271,5 +272,199 @@ describe("savings classification", () => {
     expect(debitoTags).toContainEqual({ category: "Investimentos", tag: "poupanca" });
     expect(debitoTags).toContainEqual({ category: "Res. Emergência", tag: "poupanca" });
     expect(TABLE_CONFIGS.entradas.semanticTags).toEqual([{ category: "Res. Emergência", tag: "transferenciaReserva" }]);
+  });
+});
+
+describe("savings (poupado)", () => {
+  const months = [
+    month("2026", "Agosto", {
+      entradas: [entrada(5000), entrada(300, "Res. Emergência", true)],
+      debitos: [
+        debito(1000, "Moradia"),
+        debito(400, "Investimentos", { isTransfer: true }),
+        debito(200, "Res. Emergência", { isTransfer: true }),
+      ],
+    }),
+    month("2026", "Setembro", {
+      entradas: [entrada(5000)],
+      debitos: [debito(1000, "Moradia"), debito(500, "Investimentos", { isTransfer: true })],
+    }),
+  ];
+
+  it("counts the savings categories as poupado and takes reserve withdrawals off", () => {
+    const [agosto, setembro] = buildTimeline(months, NOW);
+    expect(agosto.aportes).toBe(600);
+    expect(agosto.retiradas).toBe(300);
+    expect(agosto.poupado).toBe(300);
+    expect(setembro.poupado).toBe(500);
+  });
+
+  it("does not change the saldo, which still treats savings as an outflow like the sheet", () => {
+    const [agosto] = buildTimeline(months, NOW);
+    // Entradas (5300, reserve withdrawal included) − Débitos (1600, savings included) − card bill (0).
+    expect(agosto.saldo).toBe(5300 - 1600);
+  });
+
+  it("leaves poupado empty past the last tab", () => {
+    const december = month("2026", "Dezembro", { nubank: [nubank(100)] });
+    const extra = buildTimeline([december], NOW).filter((point) => point.source === "installments");
+    expect(extra.every((point) => point.poupado === null && point.aportes === null)).toBe(true);
+  });
+
+  it("sums the period and gives the rate over real income (reserve withdrawals aren't income)", () => {
+    const summary = summarizePeriod(buildTimeline(months, NOW));
+    expect(summary.aportesTotal).toBe(1100);
+    expect(summary.retiradasTotal).toBe(300);
+    expect(summary.poupadoTotal).toBe(800);
+    // Real income: (5300 + 5000) − 300 = 10000.
+    expect(summary.poupadoRate).toBeCloseTo(0.08);
+  });
+
+  it("has no rate without income", () => {
+    expect(summarizePeriod(buildTimeline([month("2026", "Agosto")], NOW)).poupadoRate).toBeNull();
+  });
+});
+
+describe("summarizeSavings", () => {
+  const history = [
+    month("2026", "Junho", { debitos: [debito(300, "Investimentos", { isTransfer: true })] }),
+    month("2026", "Julho", {
+      entradas: [entrada(100, "Res. Emergência", true)],
+      debitos: [debito(400, "Investimentos", { isTransfer: true })],
+    }),
+    month("2026", "Agosto", { debitos: [debito(200, "Investimentos", { isTransfer: true })] }),
+    month("2026", "Setembro", { debitos: [debito(999, "Investimentos", { isTransfer: true })] }),
+    month("2026", "Outubro", { debitos: [debito(500, "Investimentos", { isTransfer: true })] }),
+  ];
+  const at = (name: string) => ({ year: "2026", month: name });
+
+  it("adds the earlier months to the fresh value of the viewed month, withdrawals included", () => {
+    // Junho 300 + Julho (400 − 100) + Agosto: the viewed value (250) replaces the cached 200.
+    const summary = summarizeSavings(history, at("Agosto"), NOW, 250);
+    expect(summary.month).toBe(250);
+    expect(summary.total).toBe(300 + 300 + 250);
+    expect(summary.through).toEqual(at("Agosto"));
+  });
+
+  it("uses the viewed month's fresh number, not the cached one, for the current month", () => {
+    expect(summarizeSavings(history, at("Setembro"), NOW, 111).total).toBe(300 + 300 + 200 + 111);
+  });
+
+  it("never counts months after the current one, and takes the current month from the history", () => {
+    const summary = summarizeSavings(history, at("Outubro"), NOW, 500);
+    expect(summary.month).toBe(500);
+    expect(summary.through).toEqual(at("Setembro"));
+    expect(summary.total).toBe(300 + 300 + 200 + 999);
+  });
+
+  it("has no total when the history could not be read", () => {
+    const summary = summarizeSavings(null, at("Setembro"), NOW, 42);
+    expect(summary).toEqual({ month: 42, total: null, through: at("Setembro") });
+  });
+});
+
+describe("monthDataNet", () => {
+  it("nets poupança débitos against reserve withdrawals from a month page's data", () => {
+    const net = monthDataNet({
+      debitos: [
+        { valor: 500, isPoupanca: true },
+        { valor: 900, isPoupanca: false },
+      ],
+      entradas: [{ valor: 120, isReservaWithdrawal: true }],
+    } as never);
+    expect(net).toBe(380);
+  });
+});
+
+describe("savings categories in the breakdown", () => {
+  const months = [
+    month("2026", "Agosto", { debitos: [debito(200, "Moradia"), debito(300, "Investimentos", { isTransfer: true })] }),
+    month("2026", "Setembro", {
+      debitos: [
+        debito(200, "Moradia"),
+        debito(500, "Investimentos", { isTransfer: true }),
+        debito(100, "Res. Emergência", { isTransfer: true }),
+      ],
+    }),
+  ];
+
+  it("flags savings categories and their comparison with the month before", () => {
+    const { rows } = categoryBreakdown(months, "2026-09", { kind: "saidas", includeTransfers: true });
+    const byName = Object.fromEntries(rows.map((row) => [row.categoria, row]));
+    expect(byName["Investimentos"].isSavings).toBe(true);
+    expect(byName["Investimentos"].delta).toBeCloseTo(500 / 300 - 1);
+    expect(byName["Res. Emergência"].isSavings).toBe(true);
+    expect(byName["Moradia"].isSavings).toBe(false);
+  });
+
+  it("never flags entradas categories as savings", () => {
+    const withReserve = [month("2026", "Setembro", { entradas: [entrada(300, "Res. Emergência", true)] })];
+    const { rows } = categoryBreakdown(withReserve, "2026-09", { kind: "entradas", includeTransfers: true });
+    expect(rows.every((row) => !row.isSavings)).toBe(true);
+  });
+});
+
+describe("period category views", () => {
+  const months = [
+    month("2026", "Julho", { nubank: [nubank(100, "Compras"), nubank(50, "Lazer")] }),
+    month("2026", "Agosto", {
+      debitos: [debito(1000, "Moradia"), debito(300, "Investimentos", { isTransfer: true }), debito(80, "Cartão de crédito", { isCardRollover: true })],
+      nubank: [nubank(200, "Compras")],
+    }),
+    month("2026", "Setembro", {
+      debitos: [debito(1000, "Moradia"), debito(500, "Investimentos", { isTransfer: true }), debito(10, "Café")],
+      nubank: [],
+    }),
+  ];
+  const keys = ["2026-07", "2026-08", "2026-09"];
+  const opts = { kind: "saidas" as const, includeTransfers: true };
+
+  it("sums the months of the period, counting each month's card bill from the month before", () => {
+    const period = categoryBreakdownForPeriod(months, keys, opts);
+    // Agosto pays Julho's Nubank (100 + 50), Setembro pays Agosto's (200).
+    expect(Object.fromEntries(period.rows.map((row) => [row.categoria, row.total]))).toEqual({
+      Moradia: 2000,
+      Investimentos: 800,
+      Compras: 300,
+      Lazer: 50,
+      Café: 10,
+    });
+    expect(period.total).toBe(3160);
+    expect(period.monthsCount).toBe(3);
+    expect(period.rows.find((row) => row.categoria === "Moradia")?.average).toBeCloseTo(2000 / 3);
+    expect(period.rows.find((row) => row.categoria === "Investimentos")?.isSavings).toBe(true);
+  });
+
+  it("leaves transfers out unless asked and ignores months without a tab", () => {
+    const withoutTransfers = categoryBreakdownForPeriod(months, [...keys, "2026-10"], { ...opts, includeTransfers: false });
+    expect(withoutTransfers.rows.some((row) => row.categoria === "Investimentos")).toBe(false);
+    expect(withoutTransfers.monthsCount).toBe(3);
+  });
+
+  it("has an empty breakdown for an empty period", () => {
+    expect(categoryBreakdownForPeriod(months, [], opts)).toEqual({ total: 0, monthsCount: 0, rows: [] });
+  });
+
+  it("builds the category x month matrix with totals per row and per column", () => {
+    const matrix = categoryMatrix(months, keys, opts, 10);
+    expect(matrix.keys).toEqual(keys);
+    const moradia = matrix.categories.find((category) => category.categoria === "Moradia")!;
+    expect(moradia.totals).toEqual([0, 1000, 1000]);
+    expect(moradia.total).toBe(2000);
+    expect(matrix.monthTotals).toEqual([0, 1000 + 300 + 150, 1000 + 500 + 10 + 200]);
+    expect(matrix.total).toBe(3160);
+  });
+
+  it("groups everything past topN as Outras, last, keeping the totals intact", () => {
+    const matrix = categoryMatrix(months, keys, opts, 2);
+    expect(matrix.categories.map((category) => category.categoria)).toEqual(["Moradia", "Investimentos", "Outras"]);
+    const others = matrix.categories.at(-1)!;
+    expect(others.isOther).toBe(true);
+    expect(others.total).toBe(300 + 50 + 10);
+    expect(matrix.categories.reduce((acc, category) => acc + category.total, 0)).toBe(matrix.total);
+  });
+
+  it("has no Outras bucket when everything fits", () => {
+    expect(categoryMatrix(months, keys, opts, 10).categories.some((category) => category.isOther)).toBe(false);
   });
 });

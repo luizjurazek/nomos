@@ -3,6 +3,7 @@
 import { formatBRLWhole } from "@/lib/analysis/format";
 import type { MonthPoint } from "@/lib/analysis/timeline";
 import { TABLE_HEADER_COLORS } from "@/components/finance/table-colors";
+import { SAVINGS_COLOR } from "./colors";
 
 const money = (value: number | null) => (value === null ? "—" : formatBRLWhole(value));
 
@@ -20,12 +21,13 @@ export function MonthTable({
     { label: "Entradas", color: TABLE_HEADER_COLORS.entradas },
     { label: "Débitos", color: TABLE_HEADER_COLORS.debitos },
     { label: "Cartão", color: TABLE_HEADER_COLORS.nubank },
+    { label: "Poupado", color: SAVINGS_COLOR },
     { label: "Saldo", color: undefined },
   ];
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-border bg-card">
-      <table className="w-full min-w-[440px] text-xs tabular-nums">
+      <table className="w-full min-w-[520px] text-xs tabular-nums">
         <thead>
           <tr className="border-b border-border text-foreground-secondary">
             <th className="px-3 py-2 text-left font-medium">Mês</th>
@@ -57,6 +59,7 @@ export function MonthTable({
                 <td className="px-3 py-2 text-right">{money(point.entradas)}</td>
                 <td className="px-3 py-2 text-right">{money(point.debitos)}</td>
                 <td className="px-3 py-2 text-right">{money(point.cartao)}</td>
+                <td className="px-3 py-2 text-right">{money(point.poupado)}</td>
                 <td className="px-3 py-2 text-right font-semibold">{money(point.saldo)}</td>
               </tr>
             );

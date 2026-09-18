@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { syncCardRolloverAction } from "@/app/(app)/[year]/[month]/actions";
+import type { SavingsSummary } from "@/lib/analysis/savings";
 import type { MonthData } from "@/lib/sheets/types";
 import { BalanceHero } from "./balance-hero";
 import { DebitosTable } from "./debitos-table";
@@ -16,6 +17,7 @@ import { ValeAlimentacaoTable } from "./vale-alimentacao-table";
 
 interface MonthHomeProps {
   monthData: MonthData;
+  savings: SavingsSummary;
   year: string;
   month: string;
   categoriasEntradas: string[];
@@ -24,7 +26,7 @@ interface MonthHomeProps {
 }
 
 /** Nubank-style month screen: balance cards on top, then badges that swap the list shown below. */
-export function MonthHome({ monthData, year, month, categoriasEntradas, categoriasSaidas, initialTab }: MonthHomeProps) {
+export function MonthHome({ monthData, savings, year, month, categoriasEntradas, categoriasSaidas, initialTab }: MonthHomeProps) {
   // Tab lives in local state so switching badges never re-runs the server read.
   const [activeTab, setActiveTab] = useState<TableSlug>(initialTab);
   const [, startTransition] = useTransition();
@@ -42,7 +44,11 @@ export function MonthHome({ monthData, year, month, categoriasEntradas, categori
   }, [year, month]);
 
   return (
-    <div className="flex flex-col gap-3">
+    // One column on phones; from lg the balance cards become a left column and the badges + list take the rest.
+    <div className="grid gap-3 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] lg:items-start lg:gap-6">
+      {/* From lg the summary column stays in view while the list scrolls. It is capped at the visible height
+          (viewport minus the ~65px header and the sticky offset) and scrolls on its own if it is taller. */}
+      <aside className="flex flex-col gap-3 lg:sticky lg:top-6 lg:-m-1 lg:max-h-[calc(100dvh-65px-3rem)] lg:overflow-y-auto lg:p-1 lg:[scrollbar-width:thin]">
       <BalanceHero kpis={monthData.kpis} />
       <VaBalanceCard
         saldo={monthData.kpis.valeAlimentacaoSaldo}
@@ -55,8 +61,10 @@ export function MonthHome({ monthData, year, month, categoriasEntradas, categori
         month={month}
         onSelect={() => setActiveTab("debitos")}
       />
-      <MonthSummaryDropdown kpis={monthData.kpis} />
+      <MonthSummaryDropdown kpis={monthData.kpis} savings={savings} />
+      </aside>
 
+      <div className="flex min-w-0 flex-col gap-3">
       <div className="sticky top-0 z-10 -mt-1 bg-background/90 backdrop-blur">
         <TableBadgeStrip active={activeTab} onChange={setActiveTab} />
       </div>
@@ -78,6 +86,7 @@ export function MonthHome({ monthData, year, month, categoriasEntradas, categori
       {activeTab === "nubank" && (
         <NubankTable rows={monthData.nubank} year={year} month={month} categories={categoriasSaidas} />
       )}
+      </div>
     </div>
   );
 }
