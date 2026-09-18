@@ -1,0 +1,12 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e3]:
+    - generic [ref=f1e4]:
+      - generic [ref=f1e5]: Controle financeiro
+      - generic [ref=f1e6]: Entre com a senha para continuar.
+    - generic [ref=f1e8]:
+      - generic [ref=f1e9]:
+        - text: Senha
+        - textbox "Senha" [active] [ref=f1e10]
+      - button "Entrar" [ref=f1e11]
+  - region "Notifications alt+T"
+  - alert [ref=f1e12]

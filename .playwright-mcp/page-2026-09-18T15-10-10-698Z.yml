@@ -1,0 +1,60 @@
+- generic [active] [ref=f9e1]:
+  - generic [ref=f9e2]:
+    - banner [ref=f9e3]:
+      - heading "Controle financeiro" [level=1] [ref=f9e4]
+      - generic [ref=f9e5]:
+        - generic [ref=f9e6]:
+          - combobox "Ano" [ref=f9e7]:
+            - generic [ref=f9e8]: "2026"
+            - img [aria-hidden]: ▼
+          - textbox [aria-hidden] [ref=f9e9]: "2026"
+          - combobox "Mês" [ref=f9e10]:
+            - generic [ref=f9e11]: Dezembro
+            - img [aria-hidden]: ▼
+          - textbox [aria-hidden] [ref=f9e12]: Dezembro
+        - button "Alternar tema" [ref=f9e13]
+    - main [ref=f9e14]:
+      - generic [ref=f9e15]:
+        - generic [ref=f9e17]:
+          - generic [ref=f9e18]:
+            - paragraph [ref=f9e19]: Recebido
+            - paragraph [ref=f9e20]: R$ 0,00
+          - generic [ref=f9e21]:
+            - paragraph [ref=f9e22]: A receber
+            - paragraph [ref=f9e23]: R$ 11.300,00
+          - generic [ref=f9e24]:
+            - paragraph [ref=f9e25]: Pago
+            - paragraph [ref=f9e26]: R$ 0,00
+          - generic [ref=f9e27]:
+            - paragraph [ref=f9e28]: A pagar
+            - paragraph [ref=f9e29]: R$ 9.552,47
+          - generic [ref=f9e30]:
+            - paragraph [ref=f9e31]: Saldo atual
+            - paragraph [ref=f9e32]: R$ 0,00
+          - generic [ref=f9e33]:
+            - paragraph [ref=f9e34]: Saldo final
+            - paragraph [ref=f9e35]: R$ 1.747,53
+        - generic [ref=f9e36]:
+          - link "Entradas 3 R$ 11.300,00" [ref=f9e37] [cursor=pointer]:
+            - /url: /2026/Dezembro/entradas
+            - generic [ref=f9e39]: Entradas
+            - generic [ref=f9e40]: "3"
+            - generic [ref=f9e41]: R$ 11.300,00
+          - link "Débitos 22 R$ 9.552,47" [ref=f9e44] [cursor=pointer]:
+            - /url: /2026/Dezembro/debitos
+            - generic [ref=f9e46]: Débitos
+            - generic [ref=f9e47]: "22"
+            - generic [ref=f9e48]: R$ 9.552,47
+          - link "Vale Alimentação 2 R$ 1.137,00" [ref=f9e51] [cursor=pointer]:
+            - /url: /2026/Dezembro/vale-alimentacao
+            - generic [ref=f9e53]: Vale Alimentação
+            - generic [ref=f9e54]: "2"
+            - generic [ref=f9e55]: R$ 1.137,00
+          - link "Nubank 12 R$ 663,13" [ref=f9e58] [cursor=pointer]:
+            - /url: /2026/Dezembro/nubank
+            - generic [ref=f9e60]: Nubank
+            - generic [ref=f9e61]: "12"
+            - generic [ref=f9e62]: R$ 663,13
+    - button "Adicionar lançamento" [ref=f9e65]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f9e71] [cursor=pointer]

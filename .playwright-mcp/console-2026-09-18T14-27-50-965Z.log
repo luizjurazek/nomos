@@ -1,0 +1,24 @@
+[      52ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3101/login:0
+[     110ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
+[     128ms] [LOG] [HMR] connected @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
+[    9788ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3101/login?error=1&from=%2F:0
+[   18432ms] [ERROR] WebSocket connection to 'ws://localhost:3101/_next/hmr?id=JSnzpch7-rWkMyt7VcKXj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:16348
+[   19434ms] [ERROR] WebSocket connection to 'ws://localhost:3101/_next/hmr?id=JSnzpch7-rWkMyt7VcKXj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:16348
+[   20435ms] [ERROR] WebSocket connection to 'ws://localhost:3101/_next/hmr?id=JSnzpch7-rWkMyt7VcKXj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:16348
+[   21436ms] [ERROR] WebSocket connection to 'ws://localhost:3101/_next/hmr?id=JSnzpch7-rWkMyt7VcKXj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:16348
+[   22437ms] [ERROR] WebSocket connection to 'ws://localhost:3101/_next/hmr?id=JSnzpch7-rWkMyt7VcKXj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:16348
+[   23914ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/login?error=1&from=%2F:0
+[   23921ms] TypeError: Failed to fetch
+    at fetchInternal (http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:10831:12)
+    at fetchServerAction (http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:7042:38)
+[   23928ms] [ERROR] WebSocket is already in CLOSING or CLOSED state. @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:1559
+[   23961ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/__nextjs_original-stack-frames:0
+[   23964ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/__nextjs_font/geist-latin.woff2:0
+[   23964ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/__nextjs_font/geist-mono-latin.woff2:0
+[   27438ms] [ERROR] WebSocket connection to 'ws://localhost:3101/_next/hmr?id=JSnzpch7-rWkMyt7VcKXj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:16348
+[   32439ms] [ERROR] WebSocket connection to 'ws://localhost:3101/_next/hmr?id=JSnzpch7-rWkMyt7VcKXj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:16348
+[   37441ms] [ERROR] WebSocket connection to 'ws://localhost:3101/_next/hmr?id=JSnzpch7-rWkMyt7VcKXj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:16348
+[   42442ms] [ERROR] WebSocket connection to 'ws://localhost:3101/_next/hmr?id=JSnzpch7-rWkMyt7VcKXj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:16348
+[   47444ms] [ERROR] WebSocket connection to 'ws://localhost:3101/_next/hmr?id=JSnzpch7-rWkMyt7VcKXj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:16348
+[   52446ms] [ERROR] WebSocket connection to 'ws://localhost:3101/_next/hmr?id=JSnzpch7-rWkMyt7VcKXj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:16348
+[   57448ms] [ERROR] WebSocket connection to 'ws://localhost:3101/_next/hmr?id=JSnzpch7-rWkMyt7VcKXj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js:16348

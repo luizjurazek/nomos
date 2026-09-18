@@ -1,0 +1,11 @@
+- generic [ref=f8e1]:
+  - generic [ref=f8e3]:
+    - generic [ref=f8e4]:
+      - heading "Controle financeiro" [level=1] [ref=f8e5]
+      - paragraph [ref=f8e6]: Entre com a senha para continuar.
+    - generic [ref=f8e7]:
+      - generic [ref=f8e8]:
+        - generic [ref=f8e9]: Senha
+        - textbox "Senha" [active] [ref=f8e10]
+      - button "Entrar" [ref=f8e11]
+  - region "Notifications alt+T"

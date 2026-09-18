@@ -1,0 +1,43 @@
+Recebido,,Entradas,,,,,,Débitos,,,,,,,Nubank sera pago em julho,,,,
+"R$ 0,00",,Data,Nome,Categoria,Valor,Recebido,,Data,Nome,Categoria,Quem,Valor,Pago,,Data,Nome,Categoria,Quem,Valor
+A Receber,,xx/11/2026,Salário Marcos,Salário,"R$ 6.200,00",FALSE,,xx/11/2026,Aluguel,Moradia,Marcos,"R$ 1.450,00",FALSE,,07/11/2026,Serviço de nuvem,Assinaturas,Marcos,"R$ 9,99"
+"R$ 9.400,00",,xx/11/2026,Salário Ana,Salário,"R$ 3.200,00",FALSE,,xx/11/2026,Consórcio,Financiamento,Ana,"R$ 540,30",FALSE,,07/11/2026,Aparador Ana - Loja Exemplo  7/8,Compras,Marcos,"R$ 20,62"
+Pago,,xx/11/2026,Empréstimo Exemplo 5/20,Extraordinario,"R$ 400,00",FALSE,,xx/11/2026,Condomínio,Moradia,Marcos,"R$ 420,00",FALSE,,08/11/2026,Backup na nuvem,Assinaturas,Marcos,"R$ 5,90"
+"R$ 0,00",,xx/11/2026,,,,FALSE,,xx/11/2026,Luz,Moradia,Marcos,"R$ 180,00",FALSE,,14/11/2026,Backup na nuvem,Assinaturas,Ana,"R$ 55,90"
+A Pagar,,xx/11/2026,,,,FALSE,,xx/11/2026,Internet,Moradia,Marcos,"R$ 89,00",FALSE,,15/11/2026,Recarga celular,Assinaturas,Marcos,"R$ 39,85"
+"R$ 9.180,30",,xx/11/2026,,,,FALSE,,xx/11/2026,Água,Moradia,Marcos,"R$ 0,00",FALSE,,15/11/2026,Seguro de vida,Saúde,Ana,"R$ 16,91"
+Saldo atual,,xx/11/2026,,,,FALSE,,xx/11/2026,39/48 Carro,Financiamento,Marcos,"R$ 860,00",FALSE,,16/11/2026,Manutenção carro 6/6,Manutençoes,Marcos,"R$ 198,66"
+"R$ 0,00",,xx/11/2026,,,,FALSE,,xx/11/2026,Cartão Marcos e Ana,Cartão de crédito,Marcos e Ana,"R$ 1.340,11",FALSE,,xx/11/2026,Seguro fiança 7/10,Moradia,Marcos,"R$ 170,44"
+Saldo final,,xx/11/2026,,,,FALSE,,xx/11/2026,Vale alimentação,Alimentação,Marcos,"R$ 550,00",FALSE,,xx/11/2026,Seguro de vida,Saúde,Marcos,"R$ 16,34"
+"R$ 219,70",,xx/11/2026,,,,FALSE,,xx/11/2026,Imposto CNPJ,Empresa,Marcos,"R$ 400,00",FALSE,,09/11/2026,Loja Exemplo 7/10,Compras,Ana,"R$ 25,97"
+,,xx/11/2026,,,,FALSE,,xx/11/2026,INSS,Imposto,Marcos,"R$ 210,00",FALSE,,19/11/2026,Tênis Ana - Loja Exemplo 5/6,Compras,Marcos,"R$ 120,31"
+,,xx/11/2026,,,,FALSE,,xx/11/2026,Contador,Empresa,Marcos,"R$ 210,00",FALSE,,19/11/2026,Item de higiene Ana - Loja Exemplo 5/6,Compras,Marcos,"R$ 11,50"
+,,Total recebido,,,"R$ 0,00",0,,10/11/2026,Plano de saúde,Saúde,Marcos e Ana,"R$ 420,00",FALSE,,11/11/2026,Assinatura de software,Assinaturas,Marcos,"R$ 108,40"
+,,Total previsto,,,"R$ 9.400,00",,,xx/11/2026,,,,,FALSE,,09/10/2026,Loja Exemplo - Fone Ana (3/3),Compras,Ana,"R$ 82,02"
+,,,,,,,,xx/11/2026,,,,,FALSE,,xx/11/2026,,,,
+,,,,,,,,xx/11/2026,Faculdade,Educação,Ana,"R$ 550,00",FALSE,,xx/11/2026,,,,
+Recebido  v. Alimentação,,Vale - alimentação,,,,,,xx/11/2026,Gasolina carro,Combustível,Marcos,"R$ 180,00",FALSE,,xx/11/2026,,,,
+"R$ 1.100,00",,xx/11/2026,Vale Marcos,,"R$ 550,00",FALSE,,xx/11/2026,Gasolina moto,Combustível,Marcos,"R$ 90,00",FALSE,,Total,,,,"R$ 875,36"
+Saldo  v. Alimentação,,xx/11/2026,Delivery Ana,,"R$ 550,00",FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+"R$ 1.100,00",,Data,Nome,Quem,Valor,Pago,,xx/11/2026,Cabelo,Cuidados pessoais,Marcos,"R$ 55,00",FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,Unhas Ana,Cuidados pessoais,Ana,"R$ 140,00",FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,Plano celular,Assinaturas,Ana,"R$ 60,00",FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,Reserva de emergência,Investimentos,Marcos e Ana,"R$ 900,00",FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,Compras futuras,Investimentos,Marcos e Ana,"R$ 180,00",FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,Investimentos,Investimentos,Marcos e Ana,"R$ 180,00",FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,xx/11/2026,,,,,FALSE,,,,,,
+,,xx/11/2026,,,,FALSE,,Total pago,,,,"R$ 0,00",0,,,,,,
+,,Total pago,,,"R$ 0,00",,,Total previsto,,,,"R$ 9.180,30",,,,,,,

@@ -1,36 +1,28 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Controle financeiro (casal)
 
-## Getting Started
+App em Next.js que lê e escreve na planilha Google Sheets de controle financeiro, via uma
+Service Account do Google Cloud. Veja o plano completo em
+`~/.claude/plans/claude-atualmente-uso-uma-calm-storm.md`.
 
-First, run the development server:
+## Configuração
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Copie `.env.local.example` para `.env.local` e preencha as variáveis (Service Account do
+   Google, ID da planilha por ano, senha de acesso ao app). O próprio arquivo explica cada passo.
+2. `npm install`
+3. `npm run dev` — abre em [http://localhost:3000](http://localhost:3000)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `npm run dev` — servidor de desenvolvimento
+- `npm run build` — build de produção
+- `npm run lint` — ESLint
+- `npm test` — testes (Vitest), incluindo `locateTables` contra o CSV real em `reference/`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Estrutura
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/lib/sheets/` — toda a comunicação com a Google Sheets API (localização das tabelas,
+  leitura, escrita, rollover do Nubank)
+- `src/app/(app)/[year]/[month]/` — tela do mês (KPIs, tabelas, cadastro)
+- `src/proxy.ts` — gate de senha (Next.js 16 renomeou `middleware.ts` para `proxy.ts`)
+- `reference/` — export da planilha usado como fixture de teste (nomes e valores anonimizados,
+  estrutura idêntica à real)

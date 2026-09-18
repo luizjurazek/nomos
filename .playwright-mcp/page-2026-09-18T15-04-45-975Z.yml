@@ -1,0 +1,162 @@
+- generic [active] [ref=f6e1]:
+  - generic [ref=f6e2]:
+    - banner [ref=f6e3]:
+      - heading "Financeiro" [level=1] [ref=f6e327]
+      - generic [ref=f6e5]:
+        - generic [ref=f6e6]:
+          - combobox "Ano" [ref=f6e7]:
+            - generic [ref=f6e8]: "2026"
+            - img [aria-hidden]: ▼
+          - textbox [aria-hidden] [ref=f6e9]: "2026"
+          - combobox "Mês" [ref=f6e10]:
+            - generic [ref=f6e11]: Dezembro
+            - img [aria-hidden]: ▼
+          - textbox [aria-hidden] [ref=f6e12]: Dezembro
+        - button "Alternar tema" [ref=f6e13]
+    - main [ref=f6e14]:
+      - generic [ref=f6e328]:
+        - generic [ref=f6e330]:
+          - generic [ref=f6e331]:
+            - paragraph [ref=f6e332]: Recebido
+            - paragraph [ref=f6e333]: R$ 0,00
+          - generic [ref=f6e334]:
+            - paragraph [ref=f6e335]: A receber
+            - paragraph [ref=f6e336]: R$ 11.300,00
+          - generic [ref=f6e337]:
+            - paragraph [ref=f6e338]: Pago
+            - paragraph [ref=f6e339]: R$ 0,00
+          - generic [ref=f6e340]:
+            - paragraph [ref=f6e341]: A pagar
+            - paragraph [ref=f6e342]: R$ 9.552,47
+          - generic [ref=f6e343]:
+            - paragraph [ref=f6e344]: Saldo atual
+            - paragraph [ref=f6e345]: R$ 0,00
+          - generic [ref=f6e346]:
+            - paragraph [ref=f6e347]: Saldo final
+            - paragraph [ref=f6e348]: R$ 1.747,53
+        - generic [ref=f6e349]:
+          - generic [ref=f6e350]:
+            - link "Entradas 3" [ref=f6e351] [cursor=pointer]:
+              - /url: /2026/Dezembro/entradas
+              - generic [ref=f6e353]:
+                - generic [ref=f6e354]: Entradas
+                - generic [ref=f6e355]: "3"
+            - generic [ref=f6e358]:
+              - generic [ref=f6e359]:
+                - generic [ref=f6e360]:
+                  - paragraph [ref=f6e361]: Salário Luiz
+                  - paragraph [ref=f6e362]: Salário · xx/12/2026
+                - generic [ref=f6e363]: R$ 7.500,00
+              - generic [ref=f6e364]:
+                - generic [ref=f6e365]:
+                  - paragraph [ref=f6e366]: Salário Jéssica
+                  - paragraph [ref=f6e367]: Salário · xx/12/2026
+                - generic [ref=f6e368]: R$ 3.300,00
+              - generic [ref=f6e369]:
+                - generic [ref=f6e370]:
+                  - paragraph [ref=f6e371]: Empréstimo Euflausinos 5/20
+                  - paragraph [ref=f6e372]: Extraordinario · xx/12/2026
+                - generic [ref=f6e373]: R$ 500,00
+            - generic [ref=f6e374]:
+              - generic [ref=f6e375]:
+                - paragraph [ref=f6e376]: Recebido
+                - paragraph [ref=f6e377]: R$ 0,00
+              - generic [ref=f6e378]:
+                - paragraph [ref=f6e379]: Total previsto
+                - paragraph [ref=f6e380]: R$ 11.300,00
+          - generic [ref=f6e381]:
+            - link "Débitos 22" [ref=f6e382] [cursor=pointer]:
+              - /url: /2026/Dezembro/debitos
+              - generic [ref=f6e384]:
+                - generic [ref=f6e385]: Débitos
+                - generic [ref=f6e386]: "22"
+            - generic [ref=f6e389]:
+              - generic [ref=f6e390]:
+                - generic [ref=f6e391]:
+                  - paragraph [ref=f6e392]: Aluguel
+                  - paragraph [ref=f6e393]: Moradia · Luiz
+                - generic [ref=f6e394]: R$ 1.600,00
+              - generic [ref=f6e395]:
+                - generic [ref=f6e396]:
+                  - paragraph [ref=f6e397]: Consórcio
+                  - paragraph [ref=f6e398]: Financiamento · Jéssica
+                - generic [ref=f6e399]: R$ 670,66
+              - generic [ref=f6e400]:
+                - generic [ref=f6e401]:
+                  - paragraph [ref=f6e402]: Condomínio
+                  - paragraph [ref=f6e403]: Moradia · Luiz
+                - generic [ref=f6e404]: R$ 500,00
+              - generic [ref=f6e405]:
+                - generic [ref=f6e406]:
+                  - paragraph [ref=f6e407]: Luz
+                  - paragraph [ref=f6e408]: Moradia · Luiz
+                - generic [ref=f6e409]: R$ 200,00
+              - link "+18 itens — ver tudo" [ref=f6e410] [cursor=pointer]:
+                - /url: /2026/Dezembro/debitos
+            - generic [ref=f6e411]:
+              - generic [ref=f6e412]:
+                - paragraph [ref=f6e413]: Pago
+                - paragraph [ref=f6e414]: R$ 0,00
+              - generic [ref=f6e415]:
+                - paragraph [ref=f6e416]: Total previsto
+                - paragraph [ref=f6e417]: R$ 9.552,47
+          - generic [ref=f6e418]:
+            - link "Vale Alimentação 2" [ref=f6e419] [cursor=pointer]:
+              - /url: /2026/Dezembro/vale-alimentacao
+              - generic [ref=f6e421]:
+                - generic [ref=f6e422]: Vale Alimentação
+                - generic [ref=f6e423]: "2"
+            - generic [ref=f6e426]:
+              - generic [ref=f6e427]:
+                - generic [ref=f6e428]:
+                  - paragraph [ref=f6e429]: iFood Luiz
+                  - paragraph [ref=f6e430]: Recebido ·
+                - generic [ref=f6e431]: R$ 517,00
+              - generic [ref=f6e432]:
+                - generic [ref=f6e433]:
+                  - paragraph [ref=f6e434]: iFood Jéssica
+                  - paragraph [ref=f6e435]: Recebido ·
+                - generic [ref=f6e436]: R$ 620,00
+            - generic [ref=f6e437]:
+              - generic [ref=f6e438]:
+                - paragraph [ref=f6e439]: Recebido
+                - paragraph [ref=f6e440]: R$ 1.137,00
+              - generic [ref=f6e441]:
+                - paragraph [ref=f6e442]: Saldo
+                - paragraph [ref=f6e443]: R$ 1.137,00
+          - generic [ref=f6e444]:
+            - link "Nubank 12" [ref=f6e445] [cursor=pointer]:
+              - /url: /2026/Dezembro/nubank
+              - generic [ref=f6e447]:
+                - generic [ref=f6e448]: Nubank
+                - generic [ref=f6e449]: "12"
+            - generic [ref=f6e452]:
+              - generic [ref=f6e453]:
+                - generic [ref=f6e454]:
+                  - paragraph [ref=f6e455]: Google Drive
+                  - paragraph [ref=f6e456]: Assinaturas · Luiz
+                - generic [ref=f6e457]: R$ 9,99
+              - generic [ref=f6e458]:
+                - generic [ref=f6e459]:
+                  - paragraph [ref=f6e460]: Aparador Jéssica - Miranda e Cia 8/8
+                  - paragraph [ref=f6e461]: Compras · Luiz
+                - generic [ref=f6e462]: R$ 20,62
+              - generic [ref=f6e463]:
+                - generic [ref=f6e464]:
+                  - paragraph [ref=f6e465]: iCloud Luiz
+                  - paragraph [ref=f6e466]: Assinaturas · Luiz
+                - generic [ref=f6e467]: R$ 5,90
+              - generic [ref=f6e468]:
+                - generic [ref=f6e469]:
+                  - paragraph [ref=f6e470]: iCloud
+                  - paragraph [ref=f6e471]: Assinaturas · Jéssica
+                - generic [ref=f6e472]: R$ 66,90
+              - link "+8 itens — ver tudo" [ref=f6e473] [cursor=pointer]:
+                - /url: /2026/Dezembro/nubank
+            - generic [ref=f6e475]:
+              - paragraph [ref=f6e476]: Total do mês
+              - paragraph [ref=f6e477]: R$ 663,13
+    - button "Adicionar lançamento" [ref=f6e165]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f6e171] [cursor=pointer]
+  - alert [ref=f6e326]: Financeiro

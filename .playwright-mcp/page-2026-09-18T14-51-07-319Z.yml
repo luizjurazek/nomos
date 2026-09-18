@@ -1,0 +1,12 @@
+- generic [ref=f4e1]:
+  - generic [ref=f4e3]:
+    - generic [ref=f4e4]:
+      - heading "Controle financeiro" [level=1] [ref=f4e5]
+      - paragraph [ref=f4e6]: Entre com a senha para continuar.
+    - generic [ref=f4e7]:
+      - generic [ref=f4e8]:
+        - generic [ref=f4e9]: Senha
+        - textbox "Senha" [active] [ref=f4e10]
+      - button "Entrar" [ref=f4e11]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f4e17] [cursor=pointer]

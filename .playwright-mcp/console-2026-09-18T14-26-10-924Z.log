@@ -1,0 +1,22 @@
+[      22ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/_next/static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2:0
+[      22ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/_next/static/chunks/3nwc23r7nzj9i.css:0
+[      23ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/_next/static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2:0
+[      38ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3000/login:0
+[    1693ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3000/login?error=1&from=%2F:0
+[    4583ms] [WARNING] The resource http://localhost:3000/_next/static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/login?error=1&from=%2F:0
+[    4583ms] [WARNING] The resource http://localhost:3000/_next/static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/login?error=1&from=%2F:0
+[   11944ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/_next/static/chunks/459rd7flsh_py.css:0
+[   11954ms] Event
+[   13413ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/_next/static/chunks/38uhz2cqpl13v.js:0
+[   13931ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/_next/static/chunks/38uhz2cqpl13v.js:0
+[   13960ms] ChunkLoadError: Failed to load chunk /_next/static/chunks/38uhz2cqpl13v.js from module 64893
+    at http://localhost:3000/_next/static/chunks/turbopack-301fxfv7ukcx1.js:1:5067
+[   17897ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/_next/static/chunks/459rd7flsh_py.css:0
+[   17902ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/_next/static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2:0
+[   17903ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/_next/static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2:0
+[   17915ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/_next/static/chunks/38uhz2cqpl13v.js:0
+[   18471ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/_next/static/chunks/38uhz2cqpl13v.js:0
+[   18493ms] ChunkLoadError: Failed to load chunk /_next/static/chunks/38uhz2cqpl13v.js from module 64893
+    at http://localhost:3000/_next/static/chunks/turbopack-301fxfv7ukcx1.js:1:5067
+[   21501ms] [WARNING] The resource http://localhost:3000/_next/static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/2026/Dezembro:0
+[   21501ms] [WARNING] The resource http://localhost:3000/_next/static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/2026/Dezembro:0

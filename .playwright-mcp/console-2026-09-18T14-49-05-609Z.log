@@ -1,0 +1,9 @@
+[     211ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3101/login:0
+[     254ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
+[     304ms] [LOG] [HMR] connected @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
+[    4844ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
+[    7076ms] [LOG] [Fast Refresh] done in 2332ms @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
+[    7756ms] [ERROR] %c%s%c (node:60739) [DEP0108] DeprecationWarning: zlib.bytesRead is deprecated and will change its meaning in the future. Use zlib.bytesWritten instead.
+(Use `node --trace-deprecation ...` to show where the warning was created) background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server   @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:1052
+[    8014ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
+[    8838ms] [LOG] [Fast Refresh] done in 925ms @ http://localhost:3101/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
