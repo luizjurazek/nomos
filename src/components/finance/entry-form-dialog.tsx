@@ -18,11 +18,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CurrencyInput } from "./currency-input";
 import { DateInput } from "./date-input";
+import { TABLE_THEME } from "./table-theme";
 import { getMonthNumber } from "@/lib/sheets/monthNames";
 import { TABLE_CONFIGS } from "@/lib/sheets/tableConfigs";
 import type { ColumnRole, SheetCell, TableId } from "@/lib/sheets/types";
 
 const QUEM_OPTIONS = ["Luiz", "Jéssica", "Luiz e Jéssica"];
+
+const VOUCHER_TABLES: { tableId: TableId; label: string }[] = [
+  { tableId: "valeAlimentacaoCredito", label: "Entrada" },
+  { tableId: "valeAlimentacaoConsumo", label: "Saída" },
+];
 
 export interface EntryFormInitialValues extends Partial<Record<ColumnRole, SheetCell>> {
   rowIndex?: number;
@@ -38,12 +44,21 @@ interface EntryFormDialogProps {
   initialValues?: EntryFormInitialValues;
 }
 
+/** Today if it falls inside the month being viewed, otherwise the 1st: new entries start with a known day. */
+function defaultDate(year: string, month: string): string {
+  const monthNumber = getMonthNumber(month);
+  const today = new Date();
+  const isViewedMonth = String(today.getFullYear()) === year && String(today.getMonth() + 1).padStart(2, "0") === monthNumber;
+  const day = isViewedMonth ? String(today.getDate()).padStart(2, "0") : "01";
+  return `${day}/${monthNumber}/${year}`;
+}
+
 function defaultValues(year: string, month: string): Record<ColumnRole, SheetCell> {
   return {
-    date: `xx/${getMonthNumber(month)}/${year}`,
+    date: defaultDate(year, month),
     name: "",
     category: "",
-    quem: QUEM_OPTIONS[2],
+    quem: "",
     valor: 0,
     checkbox: false,
   };
@@ -52,14 +67,18 @@ function defaultValues(year: string, month: string): Record<ColumnRole, SheetCel
 export function EntryFormDialog({
   open,
   onOpenChange,
-  tableId,
+  tableId: initialTableId,
   year,
   month,
   categories,
   initialValues,
 }: EntryFormDialogProps) {
-  const config = TABLE_CONFIGS[tableId];
   const isEdit = initialValues?.rowIndex !== undefined;
+  // Creating a Vale Alimentação entry lets the user pick between its two tables (credit / consumption) inside the form.
+  const [tableId, setTableId] = useState<TableId>(initialTableId);
+  const isVoucherCreate = !isEdit && VOUCHER_TABLES.some((option) => option.tableId === initialTableId);
+  const config = TABLE_CONFIGS[tableId];
+  const theme = TABLE_THEME[tableId];
   const [values, setValues] = useState<Record<ColumnRole, SheetCell>>(() => ({
     ...defaultValues(year, month),
     ...initialValues,
@@ -70,8 +89,19 @@ export function EntryFormDialog({
 
   const setField = (role: ColumnRole, value: SheetCell) => setValues((prev) => ({ ...prev, [role]: value }));
 
+  const selectVoucherTable = (next: TableId) => {
+    if (next === tableId) return;
+    setTableId(next);
+    // The checkbox means "Recebido" on one table and "Pago" on the other, so it must not carry over.
+    setField("checkbox", false);
+  };
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (config.columnOrder.includes("quem") && !values.quem) {
+      toast.error("Selecione quem.");
+      return;
+    }
     startTransition(async () => {
       try {
         if (isEdit) {
@@ -91,14 +121,40 @@ export function EntryFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Editar" : "Novo"} — {config.label}
-          </DialogTitle>
-          <DialogDescription>{month} de {year}</DialogDescription>
+      <DialogContent className="overflow-hidden sm:max-w-md [&>[data-slot=dialog-close]]:text-white [&>[data-slot=dialog-close]]:hover:bg-white/15">
+        {/* Full-bleed header in the table's color, so each form is recognizable at a glance. */}
+        <DialogHeader
+          className="-mx-4 -mt-4 flex-row items-center gap-3 px-4 py-4 pr-12 text-white"
+          style={{ backgroundColor: theme.color }}
+        >
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/20">
+            <theme.Icon className="size-5" />
+          </span>
+          <div className="flex min-w-0 flex-col gap-1">
+            <DialogTitle className="text-lg leading-tight font-semibold">{theme.title}</DialogTitle>
+            <DialogDescription className="text-white/80">
+              {isEdit ? "Editar lançamento" : "Novo lançamento"} · {month} de {year}
+            </DialogDescription>
+          </div>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {isVoucherCreate && (
+            <div className="flex flex-col gap-2">
+              <Label>Tipo</Label>
+              <Select value={tableId} onValueChange={(value) => selectVoucherTable(value as TableId)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue>{VOUCHER_TABLES.find((option) => option.tableId === tableId)?.label}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {VOUCHER_TABLES.map((option) => (
+                    <SelectItem key={option.tableId} value={option.tableId}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {config.columnOrder.map((role) => (
             <div key={role} className="flex flex-col gap-2">
               {role === "date" && (
@@ -145,7 +201,7 @@ export function EntryFormDialog({
                   <Label>Quem</Label>
                   <Select value={String(values.quem ?? "")} onValueChange={(value) => setField("quem", value)}>
                     <SelectTrigger className="w-full">
-                      <SelectValue />
+                      <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
                       {QUEM_OPTIONS.map((option) => (
@@ -195,7 +251,12 @@ export function EntryFormDialog({
             </div>
           ))}
           <DialogFooter>
-            <Button type="submit" disabled={pending}>
+            <Button
+              type="submit"
+              disabled={pending}
+              className="text-white hover:opacity-90"
+              style={{ backgroundColor: theme.color }}
+            >
               {pending ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>

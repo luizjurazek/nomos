@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DebitoRow } from "@/lib/sheets/types";
 import { EntryFormDialog } from "./entry-form-dialog";
 import { EntryRow } from "./entry-row";
 import { TableFooterStats } from "./table-footer-stats";
+import { TableSectionHeader } from "./table-section-header";
 import { TABLE_HEADER_COLORS } from "./table-colors";
 import { TagBadge } from "./tag-badge";
 import { useRowActions } from "./use-row-actions";
@@ -32,21 +32,17 @@ export function DebitosTable({
   }, [rows]);
 
   return (
-    <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl py-0">
-      <CardHeader className="shrink-0 py-3" style={{ backgroundColor: TABLE_HEADER_COLORS.debitos }}>
-        <CardTitle className="flex items-center justify-between text-white">
-          Débitos
-          <span className="text-xs font-normal text-white/80">{rows.length}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="min-h-0 flex-1 overflow-y-auto py-2">
-        {rows.length === 0 && <p className="px-2 py-4 text-sm text-foreground-secondary">Nenhum lançamento ainda.</p>}
+    <section className="flex flex-col gap-3">
+      <TableSectionHeader title="Débitos" count={rows.length} />
+      <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+        {rows.length === 0 && <p className="px-4 py-6 text-sm text-foreground-secondary">Nenhum lançamento ainda.</p>}
         {rows.map((row) => (
           <EntryRow
             key={row.rowIndex}
             title={row.name}
             meta={`${row.categoria} · ${row.quem} · ${row.date}`}
             valor={row.valor}
+            accent={TABLE_HEADER_COLORS.debitos}
             badges={
               <>
                 {row.isPoupanca && <TagBadge tag="poupanca" />}
@@ -58,13 +54,15 @@ export function DebitosTable({
               </>
             }
             checked={row.pago}
+            checkedLabel="Pago"
+            uncheckedLabel="A pagar"
             onToggle={(value) => toggle(row.rowIndex, value)}
             onEdit={() => setEditing(row)}
             onDelete={() => remove(row.rowIndex)}
             disabled={pending}
           />
         ))}
-      </CardContent>
+      </div>
       <TableFooterStats
         stats={[
           { label: "Pago", value: totals.pago },
@@ -92,6 +90,6 @@ export function DebitosTable({
           }}
         />
       )}
-    </Card>
+    </section>
   );
 }

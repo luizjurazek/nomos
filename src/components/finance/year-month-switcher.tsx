@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -16,9 +17,11 @@ interface YearMonthSwitcherProps {
   activeMonth: string;
 }
 
+/** Period picker shown at the top of the month screen: year dropdown plus a scrollable strip of months. */
 export function YearMonthSwitcher({ years, activeYear, activeMonth }: YearMonthSwitcherProps) {
   const router = useRouter();
   const [months, setMonths] = useState<string[]>([activeMonth]);
+  const activeRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,10 +36,15 @@ export function YearMonthSwitcher({ years, activeYear, activeMonth }: YearMonthS
     };
   }, [activeYear]);
 
+  // Keep the selected month in view when the list loads or the month changes.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [months, activeMonth]);
+
   return (
-    <div className="flex gap-1.5 sm:gap-2">
+    <div className="flex items-center gap-2">
       <Select value={activeYear} onValueChange={(year) => router.push(`/${year}/${activeMonth}`)}>
-        <SelectTrigger className="w-[72px] sm:w-[90px]" aria-label="Ano">
+        <SelectTrigger className="w-[84px] shrink-0 rounded-full" aria-label="Ano">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -47,18 +55,32 @@ export function YearMonthSwitcher({ years, activeYear, activeMonth }: YearMonthS
           ))}
         </SelectContent>
       </Select>
-      <Select value={activeMonth} onValueChange={(month) => router.push(`/${activeYear}/${month}`)}>
-        <SelectTrigger className="w-[104px] sm:w-[140px]" aria-label="Mês">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {months.map((month) => (
-            <SelectItem key={month} value={month}>
+
+      <nav
+        aria-label="Mês"
+        className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {months.map((month) => {
+          const active = month === activeMonth;
+          return (
+            <Link
+              key={month}
+              ref={active ? activeRef : undefined}
+              // Visiting a month can write to the sheet (card rollover), so never prefetch the other months.
+              prefetch={false}
+              href={`/${activeYear}/${month}`}
+              aria-current={active ? "page" : undefined}
+              className={
+                active
+                  ? "shrink-0 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary"
+                  : "shrink-0 rounded-full px-3 py-1.5 text-sm font-medium text-foreground-secondary transition-colors hover:bg-accent/60"
+              }
+            >
               {month}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }

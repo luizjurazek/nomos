@@ -1,4 +1,3 @@
-import { CardFooter } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format/currency";
 
 interface Stat {
@@ -10,8 +9,8 @@ interface Stat {
 /** Mirrors the "Total recebido / Total previsto" style footer rows each table had in the original sheet. */
 export function TableFooterStats({ stats }: { stats: Stat[] }) {
   return (
-    <CardFooter
-      className="grid shrink-0 gap-2 rounded-b-2xl border-t border-border bg-muted/40 px-4 py-2.5"
+    <div
+      className="grid gap-2 rounded-2xl border border-border bg-muted/40 px-4 py-3"
       style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}
     >
       {stats.map((stat) => (
@@ -22,6 +21,6 @@ export function TableFooterStats({ stats }: { stats: Stat[] }) {
           </p>
         </div>
       ))}
-    </CardFooter>
+    </div>
   );
 }

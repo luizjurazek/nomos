@@ -22,6 +22,6 @@ export const config = {
      * Run on every route except the login page itself, static assets, and
      * Next.js internals — otherwise the login page's own CSS/JS gets blocked.
      */
-    "/((?!login|_next/static|_next/image|favicon.ico|manifest.json|icons).*)",
+    "/((?!login|_next/static|_next/image|favicon.ico|logo.png|manifest.json|icons).*)",
   ],
 };

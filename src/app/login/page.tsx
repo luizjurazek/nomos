@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,8 @@ export default async function LoginPage({
     <div className="flex h-dvh items-center justify-center bg-background px-4">
       <div className="glass-surface w-full max-w-sm rounded-3xl border border-border p-8">
         <div className="mb-6 flex flex-col gap-1">
+          {/* The logo asset is white; invert it on the light theme so it stays visible. */}
+          <Image src="/logo.png" alt="" width={64} height={64} className="mb-3 size-16 invert dark:invert-0" />
           <h1 className="text-xl font-semibold tracking-tight">Controle financeiro</h1>
           <p className="text-sm text-foreground-secondary">Entre com a senha para continuar.</p>
         </div>
