@@ -48,7 +48,7 @@ export function ValeAlimentacaoTable({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-8 shrink-0 text-foreground-secondary hover:text-foreground"
+                className="size-11 shrink-0 text-foreground-secondary hover:text-foreground"
                 onClick={() => setCreatingCredito(true)}
                 aria-label="Adicionar recebido"
               >

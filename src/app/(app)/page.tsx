@@ -1,15 +1,23 @@
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { listMonths } from "@/lib/sheets/listMonths";
-import { getLatestAvailableYear, getSpreadsheetId } from "@/lib/sheets/spreadsheetRegistry";
+import { getCurrentYearMonth, pickLandingMonth } from "@/lib/sheets/monthNames";
+import { getSpreadsheetId, listAvailableYears } from "@/lib/sheets/spreadsheetRegistry";
 
-/** Lands on the most recent year/month that has a spreadsheet and at least one month tab configured. */
+/** Lands on the current month, falling back to the closest year/month that actually has a spreadsheet tab. */
 export default async function AppIndexPage() {
-  const year = getLatestAvailableYear();
+  // The target depends on today's date, so this must never be prerendered at build time.
+  await connection();
+
+  const current = getCurrentYearMonth();
+  const years = listAvailableYears();
+  const year = years.includes(String(current.year)) ? String(current.year) : years[years.length - 1];
   if (!year) notFound();
 
-  const spreadsheetId = getSpreadsheetId(year);
-  const months = await listMonths(spreadsheetId);
-  const month = months[months.length - 1];
+  const months = await listMonths(getSpreadsheetId(year));
+  // A year other than the current one (no sheet configured for it yet) lands on its last month.
+  const targetMonthIndex = year === String(current.year) ? current.monthIndex : Number.MAX_SAFE_INTEGER - 1;
+  const month = pickLandingMonth(months, targetMonthIndex);
   if (!month) notFound();
 
   redirect(`/${year}/${month}`);

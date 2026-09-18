@@ -46,3 +46,22 @@ export function getPreviousMonthRef(year: string, monthTitle: string): { year: s
   if (idx === 0) return { year: previousYear, month: MONTH_NAMES[MONTH_NAMES.length - 1] };
   return { year, month: MONTH_NAMES[idx - 1] };
 }
+
+/** Timezone the couple lives in; the server runs in UTC, so "today" must not come from the server's local clock. */
+const APP_TIME_ZONE = "America/Sao_Paulo";
+
+/** Calendar year and 0-indexed month of `now` in the app's timezone. */
+export function getCurrentYearMonth(now: Date = new Date()): { year: number; monthIndex: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: APP_TIME_ZONE, year: "numeric", month: "2-digit" }).formatToParts(now);
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value);
+  return { year: value("year"), monthIndex: value("month") - 1 };
+}
+
+/**
+ * The month tab to land on: the one for `targetMonthIndex` when it exists, otherwise the latest tab before it
+ * (a sheet may not have every month yet), otherwise the first tab. `months` must be chronologically ordered.
+ */
+export function pickLandingMonth(months: string[], targetMonthIndex: number): string | null {
+  const notAfterTarget = months.filter((month) => monthIndex(month) <= targetMonthIndex);
+  return notAfterTarget[notAfterTarget.length - 1] ?? months[0] ?? null;
+}

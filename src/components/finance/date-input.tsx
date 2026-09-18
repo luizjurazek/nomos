@@ -62,7 +62,7 @@ export function DateInput({ id, value, onChange, defaultMonth, defaultYear }: Da
           />
         </div>
       )}
-      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+      <label className="flex min-h-11 items-center gap-2 text-sm text-muted-foreground">
         <Checkbox
           checked={!parsed.dayKnown}
           onCheckedChange={(checked) => {

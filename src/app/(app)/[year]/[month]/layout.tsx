@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { AddEntryFab } from "@/components/finance/add-entry-fab";
+import { AppMenu, AppNav } from "@/components/finance/app-menu";
 import { ThemeToggle } from "@/components/finance/theme-toggle";
 import { YearMonthSwitcher } from "@/components/finance/year-month-switcher";
 import { listAvailableYears } from "@/lib/sheets/spreadsheetRegistry";
@@ -16,7 +17,7 @@ export default async function MonthLayout({
 
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden">
-      <header className="glass-surface z-10 flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3 sm:px-6">
+      <header className="glass-surface relative z-10 flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3 sm:px-6">
         <h1 className="flex shrink-0 items-center gap-2 truncate text-sm font-semibold tracking-tight sm:text-base">
           {/* The logo asset is white; invert it on the light theme so it stays visible. */}
           <Image
@@ -27,7 +28,11 @@ export default async function MonthLayout({
             className="size-10 invert dark:invert-0"
           />
         </h1>
-        <ThemeToggle />
+        <AppNav />
+        <div className="flex items-center gap-1">
+          <AppMenu />
+          <ThemeToggle />
+        </div>
       </header>
       {/* The whole month screen scrolls here so the badge strip can stick to the top of this container. */}
       <div className="min-h-0 flex-1 overflow-y-auto">

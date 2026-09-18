@@ -32,7 +32,10 @@ export interface DayGroup<T> {
   rows: T[];
 }
 
-/** Newest day first; rows without a known day go last. Rows keep their sheet order inside a day. */
+/**
+ * Rows without a known day first ("Dia a definir"), then every day newest first, so upcoming days sit above
+ * today and the list reads as one continuous timeline. Rows keep their sheet order inside a day.
+ */
 export function groupRowsByDay<T extends { date: string }>(rows: T[]): DayGroup<T>[] {
   const groups = new Map<string, T[]>();
   for (const row of rows) {
@@ -43,8 +46,8 @@ export function groupRowsByDay<T extends { date: string }>(rows: T[]): DayGroup<
   }
   return [...groups.entries()]
     .sort(([a], [b]) => {
-      if (a === UNKNOWN_DAY_KEY) return 1;
-      if (b === UNKNOWN_DAY_KEY) return -1;
+      if (a === UNKNOWN_DAY_KEY) return -1;
+      if (b === UNKNOWN_DAY_KEY) return 1;
       return b.localeCompare(a);
     })
     .map(([key, groupRows]) => ({ key, rows: groupRows }));

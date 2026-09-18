@@ -49,7 +49,12 @@ export function MonthHome({ monthData, year, month, categoriasEntradas, categori
         color={getTab("vale-alimentacao").color}
         onSelect={() => setActiveTab("vale-alimentacao")}
       />
-      <UpcomingBillsCard debitos={monthData.debitos} onSelect={() => setActiveTab("debitos")} />
+      <UpcomingBillsCard
+        debitos={monthData.debitos}
+        year={year}
+        month={month}
+        onSelect={() => setActiveTab("debitos")}
+      />
       <MonthSummaryDropdown kpis={monthData.kpis} />
 
       <div className="sticky top-0 z-10 -mt-1 bg-background/90 backdrop-blur">

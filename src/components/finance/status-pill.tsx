@@ -18,7 +18,7 @@ export function StatusPill({ checked, checkedLabel, uncheckedLabel, onToggle, di
       onClick={() => onToggle(!checked)}
       disabled={disabled}
       aria-pressed={checked}
-      className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap transition-colors disabled:opacity-50 ${
+      className={`relative flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors after:absolute after:-inset-x-2 after:-inset-y-2.5 disabled:opacity-50 ${
         checked
           ? "bg-success/12 text-success"
           : "border border-border text-foreground-secondary hover:bg-accent/60"

@@ -63,7 +63,7 @@ export function YearMonthSwitcher({ years, activeYear, activeMonth }: YearMonthS
   return (
     <div className="flex items-center gap-2">
       <Select value={activeYear} onValueChange={goToYear}>
-        <SelectTrigger className="w-[84px] shrink-0 rounded-full" aria-label="Ano">
+        <SelectTrigger className="h-10 w-[84px] shrink-0 rounded-full" aria-label="Ano">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -91,8 +91,8 @@ export function YearMonthSwitcher({ years, activeYear, activeMonth }: YearMonthS
               aria-current={active ? "page" : undefined}
               className={
                 active
-                  ? "shrink-0 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary"
-                  : "shrink-0 rounded-full px-3 py-1.5 text-sm font-medium text-foreground-secondary transition-colors hover:bg-accent/60"
+                  ? "shrink-0 rounded-full bg-primary/10 px-3.5 py-2.5 text-sm font-semibold text-primary"
+                  : "shrink-0 rounded-full px-3.5 py-2.5 text-sm font-medium text-foreground-secondary transition-colors hover:bg-accent/60"
               }
             >
               {month}

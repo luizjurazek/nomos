@@ -83,7 +83,9 @@ export function EntryFormDialog({
     ...defaultValues(year, month),
     ...initialValues,
   }));
-  const [installments, setInstallments] = useState(1);
+  // Raw text of the installments field, so it can sit empty while typing (a number state would snap back to 1).
+  const [installmentsInput, setInstallmentsInput] = useState("1");
+  const installments = Math.max(1, Number(installmentsInput) || 1);
   const [pending, startTransition] = useTransition();
   const showInstallments = config.installmentParsing && !isEdit;
 
@@ -230,12 +232,13 @@ export function EntryFormDialog({
                 <label className="flex items-center gap-2 text-sm">
                   <span className="shrink-0">Parcelas</span>
                   <Input
-                    type="number"
-                    min={1}
-                    max={12}
+                    type="text"
+                    inputMode="numeric"
                     className="h-11 w-20"
-                    value={installments}
-                    onChange={(event) => setInstallments(Math.max(1, Number(event.target.value) || 1))}
+                    value={installmentsInput}
+                    onFocus={(event) => event.target.select()}
+                    onChange={(event) => setInstallmentsInput(event.target.value.replace(/\D/g, "").slice(0, 2))}
+                    onBlur={() => setInstallmentsInput(String(installments))}
                   />
                   <span className="text-xs text-foreground-secondary">
                     Valor da parcela — cria uma linha por mês, de {month} em diante.
@@ -243,7 +246,7 @@ export function EntryFormDialog({
                 </label>
               )}
               {role === "checkbox" && config.checkboxLabel && (
-                <label className="flex items-center gap-2 text-sm">
+                <label className="flex min-h-11 items-center gap-2 text-sm">
                   <Checkbox
                     checked={Boolean(values.checkbox)}
                     onCheckedChange={(checked) => setField("checkbox", checked === true)}

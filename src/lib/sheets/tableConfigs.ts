@@ -44,7 +44,11 @@ export const TABLE_CONFIGS: Record<TableId, TableTypeConfig> = {
     totalRowPrefixes: ["total pago", "total previsto"],
     categoryListKey: "Saidas",
     installmentParsing: false,
-    semanticTags: [{ category: "Investimentos", tag: "poupanca" }],
+    // Money set aside, not spent: both categories are savings when they show up as a débito.
+    semanticTags: [
+      { category: "Investimentos", tag: "poupanca" },
+      { category: "Res. Emergência", tag: "poupanca" },
+    ],
     checkboxLabel: "Pago",
   },
   nubank: {

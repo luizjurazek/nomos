@@ -177,7 +177,7 @@ export function EntryRow({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-8 text-foreground-secondary"
+                  className="-mr-2 size-11 text-foreground-secondary"
                   aria-label="Ações"
                   disabled={disabled}
                 >
@@ -208,11 +208,12 @@ export function EntryRow({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row justify-end">
-            <Button variant="outline" onClick={() => setConfirmingDelete(false)}>
+            <Button variant="outline" className="h-11 flex-1 sm:h-8 sm:flex-none" onClick={() => setConfirmingDelete(false)}>
               Cancelar
             </Button>
             <Button
               variant="destructive"
+              className="h-11 flex-1 sm:h-8 sm:flex-none"
               onClick={() => {
                 setConfirmingDelete(false);
                 onDelete();

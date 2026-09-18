@@ -16,8 +16,8 @@ export function TableBadgeStrip({ active, onChange }: { active: TableSlug; onCha
             aria-pressed={isActive}
             className={
               isActive
-                ? "shrink-0 rounded-full px-4 py-2 text-sm font-medium text-white transition-colors"
-                : "shrink-0 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground-secondary transition-colors hover:bg-accent/60"
+                ? "shrink-0 rounded-full px-4 py-2.5 text-sm font-medium text-white transition-colors"
+                : "shrink-0 rounded-full border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground-secondary transition-colors hover:bg-accent/60"
             }
             style={isActive ? { backgroundColor: tab.color } : undefined}
           >

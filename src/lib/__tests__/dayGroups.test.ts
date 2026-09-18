@@ -13,16 +13,17 @@ describe("dayKey", () => {
 });
 
 describe("groupRowsByDay", () => {
-  it("groups newest first, keeps sheet order inside a day and puts unknown days last", () => {
+  it("puts unknown days first, then every day newest first, and keeps sheet order inside a day", () => {
     const rows = [
       { id: 1, date: "xx/09/2026" },
       { id: 2, date: "03/09/2026" },
       { id: 3, date: "10/09/2026" },
       { id: 4, date: "03/09/2026" },
+      { id: 5, date: "25/09/2026" },
     ];
     const groups = groupRowsByDay(rows);
-    expect(groups.map((g) => g.key)).toEqual(["2026-09-10", "2026-09-03", UNKNOWN_DAY_KEY]);
-    expect(groups[1].rows.map((r) => r.id)).toEqual([2, 4]);
+    expect(groups.map((g) => g.key)).toEqual([UNKNOWN_DAY_KEY, "2026-09-25", "2026-09-10", "2026-09-03"]);
+    expect(groups[3].rows.map((r) => r.id)).toEqual([2, 4]);
   });
 });
 

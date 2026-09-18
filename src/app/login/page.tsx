@@ -24,10 +24,10 @@ export default async function LoginPage({
           <input type="hidden" name="from" value={from} />
           <div className="flex flex-col gap-2">
             <Label htmlFor="password">Senha</Label>
-            <Input id="password" name="password" type="password" autoFocus required />
+            <Input id="password" name="password" type="password" className="h-11" autoFocus required />
           </div>
           {error && <p className="text-sm text-destructive">Senha incorreta. Tente novamente.</p>}
-          <Button type="submit" className="w-full rounded-full">
+          <Button type="submit" className="h-11 w-full rounded-full text-base">
             Entrar
           </Button>
         </form>

@@ -17,6 +17,7 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
+      className="-mr-2 size-11"
       aria-label="Alternar tema"
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
     >
