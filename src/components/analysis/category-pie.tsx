@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { pieSlices } from "@/lib/analysis/categories";
-import { formatBRLWhole, formatPercent } from "@/lib/analysis/format";
-import { categoryColor } from "./category-colors";
+import { formatBRL, formatPercent } from "@/lib/analysis/format";
+import { CATEGORY_COLORS, categoryColor } from "./category-colors";
 
 const SIZE = 200;
 const CENTER = SIZE / 2;
@@ -28,11 +28,11 @@ function slicePath(start: number, end: number): string {
   return `M ${CENTER} ${CENTER} L ${from.x} ${from.y} A ${RADIUS} ${RADIUS} 0 ${largeArc} 1 ${to.x} ${to.y} Z`;
 }
 
-/** Share of each category in the total: top categories plus "Outras". Tap or hover a slice (or a legend row) to read it. */
+/** Share of each category in the total: every category (only past the palette size the smallest ones are grouped as "Outras"). Tap or hover a slice (or a legend row) to read it. */
 export function CategoryPie({ rows, totalLabel }: CategoryPieProps) {
   const [hovered, setHovered] = useState<number | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
-  const slices = useMemo(() => pieSlices(rows), [rows]);
+  const slices = useMemo(() => pieSlices(rows, CATEGORY_COLORS), [rows]);
   const total = useMemo(() => slices.reduce((acc, slice) => acc + slice.total, 0), [slices]);
 
   // Start angle of each slice, as a fraction of the turn: the shares of the slices before it.
@@ -71,14 +71,14 @@ export function CategoryPie({ rows, totalLabel }: CategoryPieProps) {
               <span className="font-medium text-foreground">{active.categoria}</span>
               <br />
               <span className="tabular-nums">
-                {formatBRLWhole(active.total)} · {formatPercent(active.share)}
+                {formatBRL(active.total)} · {formatPercent(active.share)}
               </span>
             </>
           ) : (
             <>
               {totalLabel}
               <br />
-              <span className="font-medium tabular-nums text-foreground">{formatBRLWhole(total)}</span>
+              <span className="font-medium tabular-nums text-foreground">{formatBRL(total)}</span>
             </>
           )}
         </p>
@@ -98,9 +98,9 @@ export function CategoryPie({ rows, totalLabel }: CategoryPieProps) {
               className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-accent/40"
             >
               <span className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: categoryColor(index, slice.isOther) }} />
-              <span className="min-w-0 flex-1 truncate text-sm">{slice.categoria}</span>
+              <span className="min-w-0 flex-1 break-words text-sm">{slice.categoria}</span>
               <span className="shrink-0 text-xs text-foreground-secondary tabular-nums">{formatPercent(slice.share)}</span>
-              <span className="w-20 shrink-0 text-right text-sm font-medium tabular-nums">{formatBRLWhole(slice.total)}</span>
+              <span className="w-28 shrink-0 text-right text-sm font-medium tabular-nums">{formatBRL(slice.total)}</span>
             </button>
           </li>
         ))}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatBRLWhole } from "@/lib/analysis/format";
+import { formatBRL } from "@/lib/analysis/format";
 import { shortMonth } from "@/lib/analysis/months";
 import type { CategoryPoint } from "@/lib/analysis/categories";
 import { columnPath } from "./chart-utils";
@@ -53,7 +53,7 @@ export function MiniBars({
                   className="cursor-pointer outline-none"
                   role="button"
                   tabIndex={0}
-                  aria-label={`${point.month} ${point.year}: ${formatBRLWhole(point.total)}`}
+                  aria-label={`${point.month} ${point.year}: ${formatBRL(point.total)}`}
                   onClick={() => onSelect(point.key)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -73,7 +73,7 @@ export function MiniBars({
       </div>
       {readout && (
         <p className="text-xs text-foreground-secondary">
-          {readout.month} {readout.year}: <span className="font-semibold text-foreground tabular-nums">{formatBRLWhole(readout.total)}</span>
+          {readout.month} {readout.year}: <span className="font-semibold text-foreground tabular-nums">{formatBRL(readout.total)}</span>
         </p>
       )}
     </div>

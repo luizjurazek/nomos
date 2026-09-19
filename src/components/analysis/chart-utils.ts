@@ -11,16 +11,20 @@ export function niceScale(min: number, max: number, tickCount = 4): { lo: number
   return { lo, hi, ticks };
 }
 
-/** Column path with a rounded top (data end) and a square base, per the chart mark spec (4px radius). */
-export function columnPath(x: number, top: number, width: number, baseline: number, radius = 4): string {
-  const height = baseline - top;
-  const r = Math.min(radius, width / 2, height);
+/**
+ * Column path with a rounded data end and a square base, per the chart mark spec (4px radius). `end` is the y of
+ * the data end: above the baseline for a positive value (the bar grows up), below it for a negative one (down).
+ */
+export function columnPath(x: number, end: number, width: number, baseline: number, radius = 4): string {
+  const down = end > baseline;
+  const r = Math.min(radius, width / 2, Math.abs(baseline - end));
+  const inner = down ? end - r : end + r;
   return [
     `M${x},${baseline}`,
-    `L${x},${top + r}`,
-    `Q${x},${top} ${x + r},${top}`,
-    `L${x + width - r},${top}`,
-    `Q${x + width},${top} ${x + width},${top + r}`,
+    `L${x},${inner}`,
+    `Q${x},${end} ${x + r},${end}`,
+    `L${x + width - r},${end}`,
+    `Q${x + width},${end} ${x + width},${inner}`,
     `L${x + width},${baseline}`,
     "Z",
   ].join(" ");

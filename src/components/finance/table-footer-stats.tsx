@@ -15,8 +15,8 @@ export function TableFooterStats({ stats }: { stats: Stat[] }) {
     >
       {stats.map((stat) => (
         <div key={stat.label} className="min-w-0">
-          <p className="truncate text-[11px] text-foreground-secondary">{stat.label}</p>
-          <p className={`truncate tabular-nums ${stat.emphasis ? "text-sm font-semibold" : "text-sm font-medium"}`}>
+          <p className="break-words text-[11px] text-foreground-secondary">{stat.label}</p>
+          <p className={`break-words tabular-nums ${stat.emphasis ? "text-sm font-semibold" : "text-sm font-medium"}`}>
             {formatCurrency(stat.value)}
           </p>
         </div>

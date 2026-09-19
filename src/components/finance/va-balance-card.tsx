@@ -1,4 +1,3 @@
-import { ChevronRight } from "lucide-react";
 import { formatCurrency } from "@/lib/format/currency";
 
 /** Compact food-voucher balance card; tapping it jumps to the Vale Alimentação list. */
@@ -12,7 +11,6 @@ export function VaBalanceCard({ saldo, color, onSelect }: { saldo: number; color
       <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
       <span className="flex-1 text-sm text-foreground-secondary">Saldo vale alimentação</span>
       <span className="text-base font-semibold tabular-nums">{formatCurrency(saldo)}</span>
-      <ChevronRight className="size-4 shrink-0 text-foreground-secondary" />
     </button>
   );
 }

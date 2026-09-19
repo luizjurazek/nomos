@@ -1,8 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import { TABLE_HEADER_COLORS } from "@/components/finance/table-colors";
-import { formatBRLWhole } from "@/lib/analysis/format";
+import { formatBRL } from "@/lib/analysis/format";
 import { formatCurrency } from "@/lib/format/currency";
 import type { FreedAmount, InstallmentPlan, PlansTotals } from "@/lib/analysis/installments";
 import type { MonthPoint } from "@/lib/analysis/timeline";
+import { CardBillsChart } from "./card-bills-chart";
 import { refLabel, shortRefLabel } from "./labels";
 
 interface InstallmentsPanelProps {
@@ -15,12 +19,22 @@ interface InstallmentsPanelProps {
   totals: PlansTotals;
 }
 
+type BillsView = "chart" | "list";
+
+const BILLS_VIEWS: { id: BillsView; label: string }[] = [
+  { id: "chart", label: "Gráfico" },
+  { id: "list", label: "Mês a mês" },
+];
+
 /** The card ahead: what the next bills look like, which installments are running and when the bill gets lighter. */
 export function InstallmentsPanel({ bills, plans, freed, installmentBills, totals }: InstallmentsPanelProps) {
   const max = Math.max(1, ...bills.map((bill) => bill.cartao));
   const freedByKey = new Map(freed.map((item) => [item.key, item]));
   const billKeys = new Set(bills.map((bill) => bill.key));
   const beyond = freed.filter((item) => !billKeys.has(item.key));
+  const [view, setView] = useState<BillsView>("chart");
+  // The chart needs at least two bills to draw a line; otherwise only the list applies.
+  const activeView: BillsView = bills.length > 1 ? view : "list";
 
   return (
     <section className="flex flex-col gap-3">
@@ -31,7 +45,30 @@ export function InstallmentsPanel({ bills, plans, freed, installmentBills, total
         </p>
       </header>
 
-      {bills.length > 0 && (
+      {bills.length > 1 && (
+        <div role="group" aria-label="Forma de ver" className="flex gap-1 self-start rounded-full bg-muted p-0.5">
+          {BILLS_VIEWS.map((option) => {
+            const active = option.id === activeView;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setView(option.id)}
+                className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
+                  active ? "bg-background font-medium shadow-sm" : "text-foreground-secondary hover:text-foreground"
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {activeView === "chart" && <CardBillsChart bills={bills} installmentBills={installmentBills} freed={freed} />}
+
+      {activeView === "list" && bills.length > 0 && (
         <ul className="flex flex-col gap-2.5 rounded-2xl border border-border bg-card px-4 py-3">
           {bills.map((bill) => {
             const drop = freedByKey.get(bill.key);
@@ -50,7 +87,7 @@ export function InstallmentsPanel({ bills, plans, freed, installmentBills, total
                       }}
                     />
                   </div>
-                  <span className="w-24 shrink-0 text-right text-sm font-medium tabular-nums">{formatBRLWhole(bill.cartao)}</span>
+                  <span className="w-28 shrink-0 text-right text-sm font-medium tabular-nums">{formatBRL(bill.cartao)}</span>
                 </div>
                 {inInstallments > 0 && (
                   <p className="pl-[4.25rem] text-xs text-foreground-secondary">
@@ -98,7 +135,7 @@ export function InstallmentsPanel({ bills, plans, freed, installmentBills, total
               <li key={`${plan.name}-${plan.current}-${plan.valor}`} className="flex flex-col gap-2.5 px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{plan.name}</p>
+                    <p className="break-words text-sm font-medium">{plan.name}</p>
                     <p className="text-xs text-foreground-secondary">
                       {plan.current}/{plan.total} · último pagamento em {shortRefLabel(plan.lastBill)}
                     </p>

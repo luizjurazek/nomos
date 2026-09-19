@@ -24,6 +24,21 @@ export interface MonthPoint {
   source: "sheet" | "installments";
 }
 
+/**
+ * How a month reads with or without the savings money. The sheet books what is saved as a débito and what
+ * comes back from the reserve as an entrada, so with savings both totals carry it. Without it (the day to
+ * day view) entradas are income only and débitos spending only; the net `poupado` stands on its own and
+ * entradas − débitos − cartão − poupado is the same saldo either way.
+ */
+export function viewPoint(point: MonthPoint, withSavings: boolean): MonthPoint {
+  if (withSavings || point.entradas === null || point.debitos === null) return point;
+  return { ...point, entradas: point.entradas - (point.retiradas ?? 0), debitos: point.debitos - (point.aportes ?? 0) };
+}
+
+export function viewPoints(points: MonthPoint[], withSavings: boolean): MonthPoint[] {
+  return withSavings ? points : points.map((point) => viewPoint(point, false));
+}
+
 /** Longest stretch of months, past the last tab, that we project card bills for. */
 const PROJECTION_HORIZON = 12;
 
@@ -120,23 +135,26 @@ export interface PeriodSummary {
   /** Net saved as a fraction of real income; null when there is none. */
   poupadoRate: number | null;
   avgEntradas: number;
+  /** Débitos plus the card bill. */
   avgSaidas: number;
-  tightest: MonthPoint | null;
+  /** The two parts of `avgSaidas`. */
+  avgDebitos: number;
+  avgCartao: number;
 }
 
 /** Totals over the months that have full data (sheet months); card-only projections are left out. */
-export function summarizePeriod(points: MonthPoint[]): PeriodSummary {
+export function summarizePeriod(points: MonthPoint[], withSavings = true): PeriodSummary {
   const full = points.filter((point) => point.saldo !== null);
   const count = full.length;
   const totalEntradas = full.reduce((acc, point) => acc + (point.entradas ?? 0), 0);
   const totalSaidas = full.reduce((acc, point) => acc + (point.debitos ?? 0) + point.cartao, 0);
-  const tightest = full.reduce<MonthPoint | null>(
-    (worst, point) => (worst === null || (point.saldo ?? 0) < (worst.saldo ?? 0) ? point : worst),
-    null,
-  );
   const aportesTotal = full.reduce((acc, point) => acc + (point.aportes ?? 0), 0);
   const retiradasTotal = full.reduce((acc, point) => acc + (point.retiradas ?? 0), 0);
   const realIncome = totalEntradas - retiradasTotal;
+  // Averages follow the view: the day to day leaves the savings money out of both.
+  const avgEntradas = withSavings ? totalEntradas : realIncome;
+  const avgSaidas = withSavings ? totalSaidas : totalSaidas - aportesTotal;
+  const totalCartao = full.reduce((acc, point) => acc + point.cartao, 0);
   return {
     months: count,
     saldoTotal: full.reduce((acc, point) => acc + (point.saldo ?? 0), 0),
@@ -145,8 +163,9 @@ export function summarizePeriod(points: MonthPoint[]): PeriodSummary {
     retiradasTotal,
     realIncome,
     poupadoRate: realIncome > 0 ? (aportesTotal - retiradasTotal) / realIncome : null,
-    avgEntradas: count ? totalEntradas / count : 0,
-    avgSaidas: count ? totalSaidas / count : 0,
-    tightest,
+    avgEntradas: count ? avgEntradas / count : 0,
+    avgSaidas: count ? avgSaidas / count : 0,
+    avgDebitos: count ? (avgSaidas - totalCartao) / count : 0,
+    avgCartao: count ? totalCartao / count : 0,
   };
 }

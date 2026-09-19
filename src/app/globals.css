@@ -183,7 +183,7 @@ label:has([role="checkbox"], input[type="checkbox"], input[type="radio"]) {
 }
 /*
  * Analysis page colors (validated with scripts/validate_palette.js, light and dark).
- * --cat-*: categorical palette for categories in the stacked chart; --cat-other for "Outras".
+ * --cat-*: categorical palette for categories in the stacked chart and the pie; --cat-other for "Outras".
  * --heat-*: five-step one-hue ramps for the category heat map, lowest to highest value, plus the
  *   text color that stays readable on each step.
  */
@@ -194,6 +194,12 @@ label:has([role="checkbox"], input[type="checkbox"], input[type="radio"]) {
   --cat-4: #eda100;
   --cat-5: #e87ba4;
   --cat-6: #008300;
+  --cat-7: #8a5cd6;
+  --cat-8: #1fb3c8;
+  --cat-9: #a26a3a;
+  --cat-10: #8a9a1c;
+  --cat-11: #d63a3a;
+  --cat-12: #5b6b8c;
   --cat-other: #9a9a9f;
   --heat-red-0: #ef9b91;
   --heat-red-1: #d97369;
@@ -219,6 +225,12 @@ label:has([role="checkbox"], input[type="checkbox"], input[type="radio"]) {
   --cat-4: #c98500;
   --cat-5: #d55181;
   --cat-6: #008300;
+  --cat-7: #9f78e3;
+  --cat-8: #2bc0d4;
+  --cat-9: #b87d4a;
+  --cat-10: #9fb02a;
+  --cat-11: #e05555;
+  --cat-12: #7386ab;
   --cat-other: #7c7c82;
   --heat-red-0: #a70411;
   --heat-red-1: #bb3c36;

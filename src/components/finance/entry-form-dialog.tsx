@@ -24,6 +24,12 @@ import { getMonthNumber } from "@/lib/sheets/monthNames";
 import { TABLE_CONFIGS } from "@/lib/sheets/tableConfigs";
 import type { ColumnRole, SheetCell, TableId } from "@/lib/sheets/types";
 
+// Larger touch targets for the dropdown options on mobile.
+const SELECT_ITEM_CLASS = "max-sm:min-h-12 max-sm:py-3 max-sm:text-base";
+
+// Bigger checkbox (and check icon) on mobile.
+const CHECKBOX_CLASS = "max-sm:size-6 max-sm:[&_svg]:size-5!";
+
 const QUEM_OPTIONS = ["Luiz", "Jéssica", "Luiz e Jéssica"];
 
 const VOUCHER_TABLES: { tableId: TableId; label: string }[] = [
@@ -149,14 +155,14 @@ export function EntryFormDialog({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {isVoucherCreate && (
             <div className="flex flex-col gap-2">
-              <Label>Tipo</Label>
+              <Label className="max-sm:text-base">Tipo</Label>
               <Select value={tableId} onValueChange={(value) => selectVoucherTable(value as TableId)}>
                 <SelectTrigger className="h-11 w-full text-base">
                   <SelectValue>{VOUCHER_TABLES.find((option) => option.tableId === tableId)?.label}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {VOUCHER_TABLES.map((option) => (
-                    <SelectItem key={option.tableId} value={option.tableId}>
+                    <SelectItem key={option.tableId} value={option.tableId} className={SELECT_ITEM_CLASS}>
                       {option.label}
                     </SelectItem>
                   ))}
@@ -168,7 +174,7 @@ export function EntryFormDialog({
             <div key={role} className="flex flex-col gap-2">
               {role === "date" && (
                 <>
-                  <Label>Data</Label>
+                  <Label className="max-sm:text-base">Data</Label>
                   <DateInput
                     value={String(values.date ?? "")}
                     onChange={(value) => setField("date", value)}
@@ -179,7 +185,7 @@ export function EntryFormDialog({
               )}
               {role === "name" && (
                 <>
-                  <Label htmlFor="name">Nome</Label>
+                  <Label htmlFor="name" className="max-sm:text-base">Nome</Label>
                   <Input
                     id="name"
                     required
@@ -191,14 +197,14 @@ export function EntryFormDialog({
               )}
               {role === "category" && config.categoryListKey && (
                 <>
-                  <Label>Categoria</Label>
+                  <Label className="max-sm:text-base">Categoria</Label>
                   <Select value={String(values.category ?? "")} onValueChange={(value) => setField("category", value)}>
                     <SelectTrigger className="h-11 w-full text-base">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
+                        <SelectItem key={category} value={category} className={SELECT_ITEM_CLASS}>
                           {category}
                         </SelectItem>
                       ))}
@@ -208,14 +214,14 @@ export function EntryFormDialog({
               )}
               {role === "quem" && (
                 <>
-                  <Label>Quem</Label>
+                  <Label className="max-sm:text-base">Quem</Label>
                   <Select value={String(values.quem ?? "")} onValueChange={(value) => setField("quem", value)}>
                     <SelectTrigger className="h-11 w-full text-base">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
                       {QUEM_OPTIONS.map((option) => (
-                        <SelectItem key={option} value={option}>
+                        <SelectItem key={option} value={option} className={SELECT_ITEM_CLASS}>
                           {option}
                         </SelectItem>
                       ))}
@@ -225,7 +231,7 @@ export function EntryFormDialog({
               )}
               {role === "valor" && (
                 <>
-                  <Label htmlFor="valor">Valor</Label>
+                  <Label htmlFor="valor" className="max-sm:text-base">Valor</Label>
                   <CurrencyInput
                     id="valor"
                     value={Number(values.valor ?? 0)}
@@ -251,8 +257,9 @@ export function EntryFormDialog({
                 </label>
               )}
               {role === "checkbox" && config.checkboxLabel && (
-                <label className="flex min-h-11 items-center gap-2 text-sm">
+                <label className="flex min-h-12 items-center gap-3 text-sm max-sm:text-base">
                   <Checkbox
+                    className={CHECKBOX_CLASS}
                     checked={Boolean(values.checkbox)}
                     onCheckedChange={(checked) => setField("checkbox", checked === true)}
                   />

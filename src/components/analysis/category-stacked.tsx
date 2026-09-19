@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatAxisBRL, formatBRLWhole } from "@/lib/analysis/format";
+import { formatAxisBRL, formatBRL } from "@/lib/analysis/format";
 import { refFromKey, shortMonth } from "@/lib/analysis/months";
 import type { CategoryMatrix } from "@/lib/analysis/categories";
 import { columnPath, niceScale } from "./chart-utils";
@@ -10,9 +10,8 @@ import { refLabel } from "./labels";
 import { useContainerWidth } from "./use-container-width";
 
 const MIN_SLOT = 56;
-const MAX_SLOT = 110;
 const MIN_BAR_W = 16;
-const MAX_BAR_W = 24;
+const MAX_BAR_W = 40;
 const SEGMENT_GAP = 2;
 const TOP = 12;
 const AXIS_H = 38;
@@ -32,7 +31,8 @@ export function CategoryStacked({ matrix, selectedKey, projectedKeys, onSelectMo
   const [scrollRef, containerWidth] = useContainerWidth<HTMLDivElement>();
   const { keys, categories, monthTotals } = matrix;
 
-  const slot = Math.min(MAX_SLOT, Math.max(MIN_SLOT, Math.floor(containerWidth / Math.max(keys.length, 1))));
+  // Slots stretch to fill the container; below the minimum the chart scrolls horizontally instead.
+  const slot = Math.max(MIN_SLOT, containerWidth / Math.max(keys.length, 1));
   const barW = Math.min(MAX_BAR_W, Math.max(MIN_BAR_W, Math.round(slot * 0.34)));
   const plotH = containerWidth >= 640 ? 240 : 190;
   const height = TOP + plotH + AXIS_H;
@@ -130,7 +130,7 @@ export function CategoryStacked({ matrix, selectedKey, projectedKeys, onSelectMo
                 role="button"
                 tabIndex={0}
                 aria-pressed={key === selectedKey}
-                aria-label={`${refLabel(refFromKey(key))}: ${formatBRLWhole(monthTotals[monthIndex])}`}
+                aria-label={`${refLabel(refFromKey(key))}: ${formatBRL(monthTotals[monthIndex])}`}
                 onClick={() => onSelectMonth(key)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -152,7 +152,7 @@ export function CategoryStacked({ matrix, selectedKey, projectedKeys, onSelectMo
         <div className="rounded-xl bg-muted/50 px-3 py-2.5">
           <p className="mb-1.5 flex items-baseline justify-between gap-3 text-xs font-medium text-foreground-secondary">
             <span>{refLabel(refFromKey(keys[activeIndex]))}</span>
-            <span className="tabular-nums text-foreground">{formatBRLWhole(monthTotals[activeIndex])}</span>
+            <span className="tabular-nums text-foreground">{formatBRL(monthTotals[activeIndex])}</span>
           </p>
           <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
             {categories
@@ -163,9 +163,9 @@ export function CategoryStacked({ matrix, selectedKey, projectedKeys, onSelectMo
                 <div key={category.categoria} className="flex items-center justify-between gap-3">
                   <dt className="flex min-w-0 items-center gap-1.5 text-xs text-foreground-secondary">
                     <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: categoryColor(index, category.isOther) }} />
-                    <span className="truncate">{category.categoria}</span>
+                    <span className="break-words">{category.categoria}</span>
                   </dt>
-                  <dd className="text-sm font-medium tabular-nums">{formatBRLWhole(value)}</dd>
+                  <dd className="text-sm font-medium tabular-nums">{formatBRL(value)}</dd>
                 </div>
               ))}
           </dl>

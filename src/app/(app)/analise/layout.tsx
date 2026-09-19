@@ -19,7 +19,7 @@ export default function AnaliseLayout({ children }: { children: React.ReactNode 
         </div>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <main className="mx-auto w-full max-w-3xl lg:max-w-6xl px-4 pt-4 pb-16 sm:px-6 lg:pt-6">{children}</main>
+        <main className="mx-auto w-full max-w-3xl lg:max-w-6xl px-4 pt-4 pb-28 sm:px-6 lg:pt-6">{children}</main>
       </div>
     </div>
   );

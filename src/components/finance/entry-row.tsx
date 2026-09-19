@@ -153,10 +153,10 @@ export function EntryRow({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <p className="truncate text-sm font-medium">{title}</p>
+            <p className="min-w-0 break-words text-sm font-medium">{title}</p>
             {badges}
           </div>
-          <p className="truncate text-xs text-foreground-secondary">{meta}</p>
+          <p className="break-words text-xs text-foreground-secondary">{meta}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <div className="flex flex-col items-end gap-1">

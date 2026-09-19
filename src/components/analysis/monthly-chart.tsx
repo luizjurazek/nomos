@@ -1,18 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { formatAxisBRL, formatBRLWhole } from "@/lib/analysis/format";
+import { X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { formatAxisBRL, formatBRL } from "@/lib/analysis/format";
 import { shortMonth } from "@/lib/analysis/months";
 import type { MonthPoint } from "@/lib/analysis/timeline";
+import { DeltaText, type Better } from "./delta-text";
 import { TABLE_HEADER_COLORS } from "@/components/finance/table-colors";
 import { columnPath, niceScale } from "./chart-utils";
 import { SAVINGS_COLOR } from "./colors";
+import { MonthTable } from "./month-table";
 import { useContainerWidth } from "./use-container-width";
 
-/** Slot width per month: at least this, growing to fill the card on wide screens (up to MAX_SLOT). */
+/** Slot width per month: at least this, growing so the chart fills the whole card. */
 const MIN_SLOT = 76;
 const MIN_SLOT_LINES = 56;
-const MAX_SLOT = 120;
 /** Room to the right of the last month for the direct labels of the line view. */
 const END_LABEL_PAD = 76;
 const MIN_BAR_W = 14;
@@ -27,17 +29,40 @@ interface Series {
   id: "entradas" | "debitos" | "cartao" | "poupado";
   label: string;
   color: string;
+  /** Which direction of change is good news, for tinting the comparisons. */
+  better: Better;
   value: (point: MonthPoint) => number | null;
+  /** What is inside the value that the bare number doesn't say (e.g. savings counted as débitos). */
+  note?: (point: MonthPoint, withSavings: boolean) => string | null;
 }
 
+/** The savings transfers are booked as débitos, and the reserve withdrawals as entradas: say so where the numbers are. */
+const includesSaved = (point: MonthPoint, withSavings: boolean) => {
+  if (!point.aportes) return null;
+  return withSavings ? `inclui ${formatBRL(point.aportes)} guardados` : `sem ${formatBRL(point.aportes)} guardados`;
+};
+const includesWithdrawn = (point: MonthPoint, withSavings: boolean) => {
+  if (!point.retiradas) return null;
+  return withSavings ? `inclui ${formatBRL(point.retiradas)} da reserva` : `sem ${formatBRL(point.retiradas)} da reserva`;
+};
+const savedBreakdown = (where: string) => (point: MonthPoint, withSavings: boolean) => {
+  if (point.aportes === null) return null;
+  if (point.retiradas) return `${formatBRL(point.aportes)} guardados − ${formatBRL(point.retiradas)} da reserva`;
+  return withSavings ? `já contado nos ${where}` : `fora dos ${where}`;
+};
+const balanceNote = (spending: string) => (point: MonthPoint, withSavings: boolean) => {
+  if (point.saldo === null) return null;
+  return withSavings ? `entradas − ${spending}` : `entradas − ${spending} − poupado`;
+};
+
 const SERIES: Series[] = [
-  { id: "entradas", label: "Entradas", color: TABLE_HEADER_COLORS.entradas, value: (point) => point.entradas },
-  { id: "debitos", label: "Débitos", color: TABLE_HEADER_COLORS.debitos, value: (point) => point.debitos },
-  { id: "cartao", label: "Cartão (fatura)", color: TABLE_HEADER_COLORS.nubank, value: (point) => point.cartao },
-  { id: "poupado", label: "Poupado", color: SAVINGS_COLOR, value: (point) => point.poupado },
+  { id: "entradas", label: "Entradas", color: TABLE_HEADER_COLORS.entradas, better: "up", note: includesWithdrawn, value: (point) => point.entradas },
+  { id: "debitos", label: "Débitos", color: TABLE_HEADER_COLORS.debitos, better: "down", note: includesSaved, value: (point) => point.debitos },
+  { id: "cartao", label: "Cartão (fatura)", color: TABLE_HEADER_COLORS.nubank, better: "down", value: (point) => point.cartao },
+  { id: "poupado", label: "Poupado", color: SAVINGS_COLOR, better: "up", note: savedBreakdown("débitos"), value: (point) => point.poupado },
 ];
 
-type View = "bars" | "lines";
+type View = "bars" | "lines" | "table";
 type Shape = "circle" | "square" | "diamond";
 
 interface LineSeries {
@@ -46,50 +71,106 @@ interface LineSeries {
   color: string;
   /** A second channel besides color, so the series stay apart for everyone. */
   shape: Shape;
+  better: Better;
+  note?: (point: MonthPoint, withSavings: boolean) => string | null;
   value: (point: MonthPoint) => number | null;
 }
 
 const LINE_SERIES: LineSeries[] = [
-  { id: "entradas", label: "Entradas", color: TABLE_HEADER_COLORS.entradas, shape: "circle", value: (point) => point.entradas },
+  { id: "entradas", label: "Entradas", color: TABLE_HEADER_COLORS.entradas, better: "up", shape: "circle", note: includesWithdrawn, value: (point) => point.entradas },
   // Only known when the month has a tab: past the last tab we just don't know the débitos.
-  { id: "saidas", label: "Saídas", color: TABLE_HEADER_COLORS.debitos, shape: "square", value: (point) => (point.debitos === null ? null : point.debitos + point.cartao) },
-  { id: "poupado", label: "Poupado", color: SAVINGS_COLOR, shape: "diamond", value: (point) => point.poupado },
-  { id: "saldo", label: "Saldo", color: "var(--foreground)", shape: "circle", value: (point) => point.saldo },
+  { id: "saidas", label: "Saídas", color: TABLE_HEADER_COLORS.debitos, better: "down", shape: "square", note: includesSaved, value: (point) => (point.debitos === null ? null : point.debitos + point.cartao) },
+  { id: "poupado", label: "Poupado", color: SAVINGS_COLOR, better: "up", shape: "diamond", note: savedBreakdown("saídas"), value: (point) => point.poupado },
+  { id: "saldo", label: "Saldo", color: "var(--foreground)", better: "up", shape: "circle", note: balanceNote("saídas"), value: (point) => point.saldo },
 ];
+
+/** Series ids that can be toggled from the legend; "saldo" is shared by both views. */
+type SeriesId = Series["id"] | LineSeries["id"];
+
+const BAR_IDS: SeriesId[] = [...SERIES.map((series) => series.id), "saldo"];
+const LINE_IDS: SeriesId[] = LINE_SERIES.map((series) => series.id);
+
+type Metric = Pick<Series, "label" | "color" | "better" | "value" | "note">;
+
+/** A negative poupado means more came out of the reserve than went in: shown in red wherever it appears. */
+const isDrawdown = (metric: Metric, value: number | null) => metric.label === "Poupado" && value !== null && value < 0;
+
+const SALDO: Metric = { label: "Saldo", color: "var(--foreground)", better: "up", note: balanceNote("débitos − cartão"), value: (point) => point.saldo };
+
+const TIP_WIDTH = 300;
+
+/** What the legend starts with in either view: every series except the balance, which is opt-in. */
+const DEFAULT_SERIES: ReadonlySet<SeriesId> = new Set([...BAR_IDS, ...LINE_IDS].filter((id) => id !== "saldo"));
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "bars", label: "Barras" },
   { id: "lines", label: "Linhas" },
+  { id: "table", label: "Tabela" },
 ];
 
 interface MonthlyChartProps {
   points: MonthPoint[];
   selectedKey: string | null;
   onSelect: (key: string) => void;
+  /** Whether `points` carry the savings money in entradas/débitos (see `viewPoint`); the page-wide switch. */
+  withSavings: boolean;
 }
 
-export function MonthlyChart({ points, selectedKey, onSelect }: MonthlyChartProps) {
-  const [view, setView] = useState<View>("bars");
-  const [hoverKey, setHoverKey] = useState<string | null>(null);
+export function MonthlyChart({ points, selectedKey, onSelect, withSavings }: MonthlyChartProps) {
+  const [view, setView] = useState<View>("table");
+  // Mouse/keyboard hover: the month plus the x (relative to the chart box) where its tooltip is anchored.
+  const [hover, setHover] = useState<{ key: string; x: number } | null>(null);
+  const hoverKey = hover?.key ?? null;
+  // Month pinned as the comparison target; touch screens have no hover, so it is picked with a tap.
+  const [pinnedKey, setPinnedKey] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const chartRef = useRef<HTMLDivElement>(null);
   const [scrollRef, containerWidth] = useContainerWidth<HTMLDivElement>();
+  const [selected, setSelected] = useState<ReadonlySet<SeriesId>>(DEFAULT_SERIES);
   const lines = view === "lines";
+  const table = view === "table";
+  const spendingLabel = lines ? "saídas" : "débitos";
+  const cap = (text: string) => text[0].toUpperCase() + text.slice(1);
+
+  const isVisible = (id: SeriesId) => selected.has(id);
+  const hidden: ReadonlySet<SeriesId> = new Set((lines ? LINE_IDS : BAR_IDS).filter((id) => !isVisible(id)));
+  const visibleSeries = SERIES.filter((series) => isVisible(series.id));
+  const visibleLines = LINE_SERIES.filter((series) => isVisible(series.id));
+  const showSaldo = isVisible("saldo");
+
+  // Emptying the selection goes back to the default, so the chart never goes blank.
+  const toggleSeries = (id: SeriesId) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    const ids = lines ? LINE_IDS : BAR_IDS;
+    setSelected(ids.some((other) => next.has(other)) ? next : DEFAULT_SERIES);
+  };
+
+  // Bar and line views have different series, so a selection doesn't carry over.
+  const changeView = (next: View) => {
+    setView(next);
+    setSelected(DEFAULT_SERIES);
+    setPicking(false);
+  };
 
   // Slots grow to fill the card; the line view keeps room on the right for the end labels.
   const pad = lines ? END_LABEL_PAD : 0;
   const minSlot = lines ? MIN_SLOT_LINES : MIN_SLOT;
-  const slot = Math.min(MAX_SLOT, Math.max(minSlot, Math.floor((containerWidth - pad) / Math.max(points.length, 1))));
+  const slot = Math.max(minSlot, Math.floor((containerWidth - pad) / Math.max(points.length, 1)));
   const barW = Math.min(MAX_BAR_W, Math.max(MIN_BAR_W, Math.round(slot * 0.2)));
-  const groupW = SERIES.length * barW + (SERIES.length - 1) * BAR_GAP;
+  const groupW = visibleSeries.length * barW + Math.max(0, visibleSeries.length - 1) * BAR_GAP;
   const plotH = containerWidth >= 640 ? 260 : 200;
   const height = TOP + plotH + AXIS_H;
 
   const scale = useMemo(() => {
     const values = lines
-      ? points.flatMap((point) => LINE_SERIES.map((series) => series.value(point)))
-      : points.flatMap((point) => [point.entradas, point.debitos, point.cartao, point.poupado, point.saldo]);
+      ? points.flatMap((point) => visibleLines.map((series) => series.value(point)))
+      : points.flatMap((point) => [...visibleSeries.map((series) => series.value(point)), showSaldo ? point.saldo : null]);
     const known = values.filter((value): value is number => value !== null);
     return niceScale(Math.min(0, ...known), Math.max(0, ...known));
-  }, [points, lines]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [points, lines, selected]);
 
   const y = (value: number) => TOP + ((scale.hi - value) / (scale.hi - scale.lo)) * plotH;
   const baseline = y(0);
@@ -107,36 +188,78 @@ export function MonthlyChart({ points, selectedKey, onSelect }: MonthlyChartProp
   }, [firstKey, points.length, containerWidth, view]);
 
   const activeKey = hoverKey ?? selectedKey;
-  const active = points.find((point) => point.key === activeKey) ?? null;
   const activeIndex = points.findIndex((point) => point.key === activeKey);
 
-  const saldoPoints = points.map((point, index) => ({ point, x: index * slot + slot / 2 })).filter((entry) => entry.point.saldo !== null);
+  // The summary stays on the chosen month; hovering (or pinning) another month compares against it.
+  const hovered = points.find((point) => point.key === hoverKey) ?? null;
+  const base = points.find((point) => point.key === selectedKey) ?? hovered;
+  const pinned = points.find((point) => point.key === pinnedKey) ?? null;
+  const compareTo = [hovered, pinned].find((point) => point && point.key !== base?.key) ?? null;
+
+  const showHover = (event: React.SyntheticEvent<SVGRectElement>, key: string) => {
+    const box = chartRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = rect.left + rect.width / 2 - box.left;
+    setHover({ key, x: Math.min(Y_AXIS_W + containerWidth, Math.max(Y_AXIS_W, x)) });
+  };
+
+  const choose = (key: string) => {
+    if (picking) {
+      setPinnedKey(key === selectedKey ? null : key);
+      setPicking(false);
+    } else {
+      onSelect(key);
+    }
+  };
+
+  // What the hover tooltip lists: the series currently on the chart.
+  const tipMetrics: Metric[] = lines ? visibleLines : [...visibleSeries, ...(showSaldo ? [SALDO] : [])];
+
+  const saldoPoints = (showSaldo ? points : []).map((point, index) => ({ point, x: index * slot + slot / 2 })).filter((entry) => entry.point.saldo !== null);
 
   // Direct labels at the end of each line. When two would collide we drop one instead of nudging it away from its line.
-  const endLabels = lines ? placeEndLabels(points, slot, y) : [];
+  const endLabels = lines ? placeEndLabels(visibleLines, points, slot, y) : [];
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+      <p className="text-[11px] text-foreground-secondary">
+        {withSavings
+          ? `Como na planilha: o que você guarda (Investimentos e Reserva) é lançado como débito e o que volta da reserva entra como entrada. Por isso as Entradas e os ${cap(spendingLabel)} carregam dinheiro de poupança, e o Poupado (guardado − retirado) já está dentro deles.`
+          : `Entradas e ${cap(spendingLabel)} mostram só o dia a dia, sem o que foi guardado nem o que voltou da reserva. O Poupado (guardado − retirado) aparece à parte, e o Saldo é o mesmo: entradas − ${lines ? "saídas" : "débitos − cartão"} − poupado.`}
+      </p>
+
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        {lines ? <LinesLegend /> : <Legend />}
-        <div role="group" aria-label="Tipo de gráfico" className="flex gap-0.5 rounded-full bg-muted p-0.5">
-          {VIEWS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              aria-pressed={option.id === view}
-              onClick={() => setView(option.id)}
-              className={`rounded-full px-3 py-1 text-xs transition-colors ${
-                option.id === view ? "bg-background font-medium shadow-sm" : "text-foreground-secondary hover:text-foreground"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
+        {/* Invisible (not removed) in the table view, so the header row keeps its height. */}
+        <div className={table ? "invisible" : ""}>
+          {lines ? <LinesLegend hidden={hidden} onToggle={toggleSeries} /> : <Legend hidden={hidden} onToggle={toggleSeries} />}
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <div role="group" aria-label="Tipo de visualização" className="flex gap-0.5 rounded-full bg-muted p-0.5">
+            {VIEWS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={option.id === view}
+                onClick={() => changeView(option.id)}
+                className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                  option.id === view ? "bg-background font-medium shadow-sm" : "text-foreground-secondary hover:text-foreground"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="flex">
+      {/* The chart keeps its space (only invisible) in the table view, so the card never changes height and the width observer stays attached. */}
+      <div ref={chartRef} className={`relative flex ${table ? "invisible" : ""}`}>
+        {table && (
+          <div className="visible absolute inset-0 z-10 overflow-auto rounded-xl bg-card">
+            <MonthTable points={points} selectedKey={selectedKey} onSelect={choose} onHover={(key) => setHover(key ? { key, x: 0 } : null)} embedded />
+          </div>
+        )}
         <svg width={Y_AXIS_W} height={height} className="shrink-0 text-foreground-secondary" aria-hidden>
           {scale.ticks.map((tick) => (
             <text key={tick} x={Y_AXIS_W - 8} y={y(tick) + 3} textAnchor="end" className="fill-current text-[10px]">
@@ -174,9 +297,10 @@ export function MonthlyChart({ points, selectedKey, onSelect }: MonthlyChartProp
                   {!lines && selected && <rect x={slotX + 2} y={TOP} width={slot - 4} height={plotH} rx={8} fill="currentColor" opacity={0.07} />}
 
                   {!lines &&
-                    SERIES.map((series, seriesIndex) => {
+                    visibleSeries.map((series, seriesIndex) => {
                       const value = series.value(point);
-                      if (value === null || value <= 0) return null;
+                      // Negative values (poupado when more left the reserve than went in) grow below the zero line.
+                      if (value === null || value === 0) return null;
                       const x = slotX + (slot - groupW) / 2 + seriesIndex * (barW + BAR_GAP);
                       return (
                         <path
@@ -237,7 +361,7 @@ export function MonthlyChart({ points, selectedKey, onSelect }: MonthlyChartProp
               />
             )}
             {lines &&
-              LINE_SERIES.map((series) => {
+              visibleLines.map((series) => {
                 const dots = points.map((point, index) => ({ point, index, value: series.value(point) }));
                 return (
                   <g key={series.id}>
@@ -286,25 +410,51 @@ export function MonthlyChart({ points, selectedKey, onSelect }: MonthlyChartProp
                 role="button"
                 tabIndex={0}
                 aria-pressed={point.key === selectedKey}
-                aria-label={`${point.month} ${point.year}: saldo ${point.saldo === null ? "desconhecido" : formatBRLWhole(point.saldo)}`}
-                onClick={() => onSelect(point.key)}
+                aria-label={`${point.month} ${point.year}: saldo ${point.saldo === null ? "desconhecido" : formatBRL(point.saldo)}`}
+                onClick={() => choose(point.key)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    onSelect(point.key);
+                    choose(point.key);
                   }
                 }}
-                onPointerEnter={(event) => event.pointerType === "mouse" && setHoverKey(point.key)}
-                onPointerLeave={() => setHoverKey(null)}
-                onFocus={() => setHoverKey(point.key)}
-                onBlur={() => setHoverKey(null)}
+                onPointerEnter={(event) => event.pointerType === "mouse" && showHover(event, point.key)}
+                onPointerLeave={() => setHover(null)}
+                onFocus={(event) => showHover(event, point.key)}
+                onBlur={() => setHover(null)}
               />
             ))}
           </svg>
         </div>
+
+        {!table && hover && hovered && (
+          <HoverTip
+            point={hovered}
+            prev={points[points.indexOf(hovered) - 1] ?? null}
+            next={points[points.indexOf(hovered) + 1] ?? null}
+            metrics={tipMetrics}
+            withSavings={withSavings}
+            x={hover.x}
+            limit={Y_AXIS_W + containerWidth}
+            gap={slot / 2 + 8}
+          />
+        )}
       </div>
 
-      {active && <Readout point={active} />}
+      {base && (
+        <Readout
+          point={base}
+          prev={points[points.indexOf(base) - 1] ?? null}
+          next={points[points.indexOf(base) + 1] ?? null}
+          compareTo={compareTo}
+          withSavings={withSavings}
+          pinned={pinned}
+          picking={picking}
+          target={table ? "da tabela" : "do gráfico"}
+          onTogglePicking={() => setPicking((value) => !value)}
+          onClearPinned={() => setPinnedKey(null)}
+        />
+      )}
     </div>
   );
 }
@@ -325,11 +475,11 @@ interface EndLabel {
 }
 
 /** Labels at the last known point of each line; a label that would sit on top of another is skipped. */
-function placeEndLabels(points: MonthPoint[], slot: number, y: (value: number) => number): EndLabel[] {
-  const candidates = LINE_SERIES.flatMap((series): EndLabel[] => {
+function placeEndLabels(series: LineSeries[], points: MonthPoint[], slot: number, y: (value: number) => number): EndLabel[] {
+  const candidates = series.flatMap((item): EndLabel[] => {
     for (let index = points.length - 1; index >= 0; index--) {
-      const value = series.value(points[index]);
-      if (value !== null) return [{ id: series.id, text: series.label, x: index * slot + slot / 2 + 10, y: y(value) }];
+      const value = item.value(points[index]);
+      if (value !== null) return [{ id: item.id, text: item.label, x: index * slot + slot / 2 + 10, y: y(value) }];
     }
     return [];
   }).sort((a, b) => a.y - b.y);
@@ -357,38 +507,59 @@ function ProjectedKey() {
   );
 }
 
-function Legend() {
+interface LegendProps {
+  hidden: ReadonlySet<SeriesId>;
+  onToggle: (id: SeriesId) => void;
+}
+
+/** A legend entry that doubles as the on/off switch of its series. */
+function LegendToggle({ id, label, hidden, onToggle, children }: LegendProps & { id: SeriesId; label: string; children: React.ReactNode }) {
+  const off = hidden.has(id);
+  return (
+    <li>
+      <button
+        type="button"
+        aria-pressed={!off}
+        aria-label={`${off ? "Adicionar" : "Remover"} ${label} do gráfico`}
+        onClick={() => onToggle(id)}
+        className={`flex min-h-8 items-center gap-1.5 rounded-md px-1 transition-opacity hover:text-foreground ${off ? "opacity-40" : ""}`}
+      >
+        {children}
+        <span className={off ? "line-through" : ""}>{label}</span>
+      </button>
+    </li>
+  );
+}
+
+function Legend({ hidden, onToggle }: LegendProps) {
   return (
     <LegendItems>
       {SERIES.map((series) => (
-        <li key={series.id} className="flex items-center gap-1.5">
+        <LegendToggle key={series.id} id={series.id} label={series.label} hidden={hidden} onToggle={onToggle}>
           <span className="size-2.5 rounded-sm" style={{ backgroundColor: series.color }} />
-          {series.label}
-        </li>
+        </LegendToggle>
       ))}
-      <li className="flex items-center gap-1.5">
+      <LegendToggle id="saldo" label="Saldo" hidden={hidden} onToggle={onToggle}>
         <svg width="16" height="10" className="text-foreground" aria-hidden>
           <line x1="0" y1="5" x2="16" y2="5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           <circle cx="8" cy="5" r="3.5" fill="currentColor" stroke="var(--card)" strokeWidth="1.5" />
         </svg>
-        Saldo
-      </li>
+      </LegendToggle>
       <ProjectedKey />
     </LegendItems>
   );
 }
 
-function LinesLegend() {
+function LinesLegend({ hidden, onToggle }: LegendProps) {
   return (
     <LegendItems>
       {LINE_SERIES.map((series) => (
-        <li key={series.id} className="flex items-center gap-1.5">
+        <LegendToggle key={series.id} id={series.id} label={series.label} hidden={hidden} onToggle={onToggle}>
           <svg width="18" height="12" aria-hidden>
             <line x1="0" y1="6" x2="18" y2="6" stroke={series.color} strokeWidth="2" strokeLinecap="round" />
             <Marker shape={series.shape} x={9} y={6} color={series.color} />
           </svg>
-          {series.label}
-        </li>
+        </LegendToggle>
       ))}
       <li className="flex items-center gap-1.5">
         <svg width="18" height="12" aria-hidden>
@@ -400,37 +571,161 @@ function LinesLegend() {
   );
 }
 
-function Readout({ point }: { point: MonthPoint }) {
-  const rows: { label: string; color?: string; value: number | null; strong?: boolean }[] = [
-    { label: "Entradas", color: TABLE_HEADER_COLORS.entradas, value: point.entradas },
-    { label: "Débitos", color: TABLE_HEADER_COLORS.debitos, value: point.debitos },
-    { label: "Cartão (fatura)", color: TABLE_HEADER_COLORS.nubank, value: point.cartao },
-    { label: "Poupado", color: SAVINGS_COLOR, value: point.poupado },
-    { label: "Saldo", value: point.saldo, strong: true },
-  ];
+const READOUT_METRICS: Metric[] = [
+  ...SERIES,
+  SALDO,
+];
+
+/** Floating card next to the hovered month: each series' value plus its change from the months before and after. */
+function HoverTip({
+  point,
+  prev,
+  next,
+  metrics,
+  withSavings,
+  x,
+  limit,
+  gap,
+}: {
+  point: MonthPoint;
+  prev: MonthPoint | null;
+  next: MonthPoint | null;
+  metrics: Metric[];
+  withSavings: boolean;
+  x: number;
+  limit: number;
+  gap: number;
+}) {
+  // Sits to the right of the month, flipping to the left when it would run past the chart (never wider than the chart).
+  const width = Math.min(TIP_WIDTH, limit);
+  const flip = x + gap + width > limit;
+  const left = flip ? Math.max(0, x - gap - width) : x + gap;
+  return (
+    <div
+      role="tooltip"
+      style={{ left, width }}
+      className="pointer-events-none absolute top-2 z-10 rounded-xl border border-border bg-popover px-3.5 py-3 text-popover-foreground shadow-md"
+    >
+      <p className="mb-2 text-sm font-semibold">
+        {point.month} {point.year}
+        {point.projected && <span className="ml-1.5 text-xs font-normal text-foreground-secondary">projetado</span>}
+      </p>
+      {/* One block per series, a rule between them: value and note on top, then the change against each neighbouring month. */}
+      <dl className="flex flex-col divide-y divide-border border-t border-border">
+        {metrics.map((metric) => {
+          const value = metric.value(point);
+          const note = metric.note?.(point, withSavings);
+          const comparisons = [prev, next].filter((other): other is MonthPoint => other !== null);
+          return (
+            <div key={metric.label} className="flex flex-col gap-1 py-2 last:pb-0">
+              <dt className="flex items-center justify-between gap-3 text-sm">
+                <span className="flex min-w-0 items-center gap-2 font-medium">
+                  <span className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: metric.color }} />
+                  <span className="break-words">{metric.label}</span>
+                </span>
+                <span className={`font-semibold tabular-nums ${isDrawdown(metric, value) ? "text-destructive" : "text-foreground"}`}>
+                  {value === null ? "—" : formatBRL(value)}
+                </span>
+              </dt>
+              {note && <dd className="pl-4.5 text-[11px] text-foreground-secondary italic">{note}</dd>}
+              {comparisons.map((other) => (
+                <dd key={other.key} className="flex justify-between gap-3 pl-4.5 text-[11px] tabular-nums text-foreground-secondary">
+                  <span>vs {shortMonth(other.month)}</span>
+                  <DeltaText current={value} reference={metric.value(other)} better={metric.better} />
+                </dd>
+              ))}
+            </div>
+          );
+        })}
+      </dl>
+    </div>
+  );
+}
+
+interface ReadoutProps {
+  point: MonthPoint;
+  prev: MonthPoint | null;
+  next: MonthPoint | null;
+  /** A month the user hovered or pinned; replaces the previous/next comparison. */
+  compareTo: MonthPoint | null;
+  withSavings: boolean;
+  pinned: MonthPoint | null;
+  picking: boolean;
+  /** Where the month to compare is tapped, for the prompt while picking. */
+  target: string;
+  onTogglePicking: () => void;
+  onClearPinned: () => void;
+}
+
+function Readout({ point, prev, next, compareTo, withSavings, pinned, picking, target, onTogglePicking, onClearPinned }: ReadoutProps) {
+  const neighbours = [prev, next].filter((month): month is MonthPoint => month !== null);
+  const comparisons = compareTo ? [compareTo] : neighbours;
 
   return (
     <div className="rounded-xl bg-muted/50 px-3 py-2.5">
-      <p className="mb-1.5 text-xs font-medium text-foreground-secondary">
-        {point.month} {point.year}
-        {point.projected && " · projetado"}
+      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <p className="text-xs font-medium text-foreground-secondary">
+          {point.month} {point.year}
+          {point.projected && " · projetado"}
+        </p>
+        <div className="flex items-center gap-1.5">
+          {pinned && !picking && (
+            <button
+              type="button"
+              onClick={onClearPinned}
+              aria-label={`Remover comparação com ${pinned.month} ${pinned.year}`}
+              className="flex min-h-8 items-center gap-1 rounded-full bg-background px-2.5 text-xs shadow-sm"
+            >
+              vs {shortMonth(pinned.month)}/{pinned.year.slice(2)}
+              <X className="size-3" aria-hidden />
+            </button>
+          )}
+          <button
+            type="button"
+            aria-pressed={picking}
+            onClick={onTogglePicking}
+            className={`min-h-8 rounded-full px-2.5 text-xs transition-colors ${
+              picking ? "bg-foreground text-background" : "bg-background shadow-sm hover:bg-accent/60"
+            }`}
+          >
+            {picking ? `Toque em um mês ${target}` : "Comparar com outro mês"}
+          </button>
+        </div>
+      </div>
+      <p className="mb-2 text-[11px] text-foreground-secondary">
+        {compareTo
+          ? `Variação em relação a ${compareTo.month} ${compareTo.year}`
+          : "Variação em relação ao mês anterior e ao posterior"}
       </p>
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-5">
-        {rows.map((row) => (
-          <div key={row.label} className="min-w-0">
-            <dt className="flex items-center gap-1.5 text-[11px] text-foreground-secondary">
-              {row.color ? (
-                <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: row.color }} />
-              ) : (
-                <span className="h-0.5 w-2 shrink-0 bg-foreground" />
-              )}
-              <span className="truncate">{row.label}</span>
-            </dt>
-            <dd className={`text-sm tabular-nums ${row.strong ? "font-semibold" : "font-medium"}`}>
-              {row.value === null ? "—" : formatBRLWhole(row.value)}
-            </dd>
-          </div>
-        ))}
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5 sm:grid-cols-5">
+        {READOUT_METRICS.map((metric) => {
+          const value = metric.value(point);
+          const note = metric.note?.(point, withSavings);
+          return (
+            <div key={metric.label} className="min-w-0">
+              <dt className="flex items-center gap-1.5 text-[11px] text-foreground-secondary">
+                {metric.label !== SALDO.label ? (
+                  <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: metric.color }} />
+                ) : (
+                  <span className="h-0.5 w-2 shrink-0 bg-foreground" />
+                )}
+                <span className="break-words">{metric.label}</span>
+              </dt>
+              <dd
+                className={`text-sm tabular-nums ${metric.label === SALDO.label ? "font-semibold" : "font-medium"} ${isDrawdown(metric, value) ? "text-destructive" : ""}`}
+              >
+                {value === null ? "—" : formatBRL(value)}
+              </dd>
+              {comparisons.map((other) => (
+                <dd key={other.key} className="flex justify-between gap-2 text-[11px] tabular-nums text-foreground-secondary">
+                  <span>{other === compareTo ? "" : `vs ${shortMonth(other.month)}`}</span>
+                  <DeltaText current={value} reference={metric.value(other)} better={metric.better} />
+                </dd>
+              ))}
+              {note && <dd className="text-[11px] italic text-foreground-secondary">{note}</dd>}
+            </div>
+          );
+        })}
       </dl>
       {point.source === "installments" && (
         <p className="mt-2 text-[11px] text-foreground-secondary">

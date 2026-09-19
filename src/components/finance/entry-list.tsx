@@ -49,17 +49,17 @@ function FilterSelect({
     <Select value={value || ALL} onValueChange={(next) => onChange(next === ALL || next === null ? "" : next)}>
       <SelectTrigger
         aria-label={`Filtrar por ${label.toLowerCase()}`}
-        className={`h-10 min-w-0 flex-1 gap-2 rounded-full px-4 shadow-none transition-colors ${
+        className={`h-auto min-h-10 min-w-0 flex-1 gap-2 rounded-3xl px-4 py-2 whitespace-normal shadow-none transition-colors data-[size=default]:h-auto data-[size=default]:min-h-10 ${
           value
             ? "border-foreground bg-foreground text-background dark:bg-foreground dark:hover:bg-foreground [&_svg]:text-background/70"
             : "border-border bg-card hover:bg-accent/60 dark:bg-card dark:hover:bg-accent/60"
         }`}
       >
-        <SelectValue>
+        <SelectValue className="line-clamp-none">
           {(current) => (
             <span className="flex min-w-0 items-baseline gap-1.5">
               <span className={`text-xs ${value ? "text-background/70" : "text-foreground-secondary"}`}>{label}</span>
-              <span className="truncate font-medium">{current === ALL ? allLabel : current}</span>
+              <span className="min-w-0 break-words font-medium">{current === ALL ? allLabel : current}</span>
             </span>
           )}
         </SelectValue>

@@ -58,6 +58,7 @@ export function ValeAlimentacaoTable({
           />
           <EntryList
             rows={optimisticCredito}
+            filterable
             emptyMessage="Nada recebido ainda."
             renderRow={(row) => (
               <EntryRow
@@ -84,6 +85,7 @@ export function ValeAlimentacaoTable({
           />
           <EntryList
             rows={optimisticConsumo}
+            filterable
             emptyMessage="Nenhum gasto ainda."
             renderRow={(row) => (
               <EntryRow

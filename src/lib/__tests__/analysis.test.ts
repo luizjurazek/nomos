@@ -4,7 +4,8 @@ import { baseName, freedByMonth, installmentsByBill, listInstallmentPlans, summa
 import { addMonths, monthKey, refFromKey } from "../analysis/months";
 import { parseMonth } from "../analysis/parseMonth";
 import { monthDataNet, summarizeSavings } from "../analysis/savings";
-import { buildTimeline, pickReferenceMonth, summarizePeriod } from "../analysis/timeline";
+import { pointsInRange, rangeOptions } from "../analysis/ranges";
+import { buildTimeline, pickReferenceMonth, summarizePeriod, viewPoint } from "../analysis/timeline";
 import type { AnalysisDebito, AnalysisEntrada, AnalysisMonth, AnalysisNubank } from "../analysis/types";
 import type { SheetGrid } from "../sheets/types";
 import { TABLE_CONFIGS } from "../sheets/tableConfigs";
@@ -132,7 +133,7 @@ describe("pickReferenceMonth", () => {
 });
 
 describe("summarizePeriod", () => {
-  it("ignores card-only projections and finds the tightest month", () => {
+  it("ignores card-only projections", () => {
     const points = buildTimeline(
       [
         month("2026", "Agosto", { entradas: [entrada(3000)], debitos: [debito(1000, "Moradia")] }),
@@ -144,7 +145,6 @@ describe("summarizePeriod", () => {
     expect(summary.months).toBe(2);
     expect(summary.saldoTotal).toBe(2000 + 500);
     expect(summary.avgEntradas).toBe(3000);
-    expect(summary.tightest?.key).toBe("2026-09");
   });
 });
 
@@ -532,5 +532,74 @@ describe("period category views", () => {
 
   it("has no Outras bucket when everything fits", () => {
     expect(categoryMatrix(months, keys, opts, 10).categories.some((category) => category.isOther)).toBe(false);
+  });
+});
+
+describe("ranges", () => {
+  const timeline = buildTimeline(
+    [
+      month("2025", "Dezembro", { entradas: [entrada(1000)] }),
+      month("2026", "Agosto", { entradas: [entrada(1000)] }),
+      month("2026", "Setembro", { entradas: [entrada(1000)] }),
+      month("2026", "Outubro", { entradas: [entrada(1000)] }),
+      month("2027", "Janeiro", { entradas: [entrada(1000)] }),
+    ],
+    NOW,
+  );
+  const keys = (id: Parameters<typeof pointsInRange>[1]) => pointsInRange(timeline, id, NOW).map((point) => point.key);
+
+  it("cuts the current year, up to now, the next year and a given year", () => {
+    expect(keys("year")).toEqual(["2026-08", "2026-09", "2026-10"]);
+    expect(keys("ytd")).toEqual(["2026-08", "2026-09"]);
+    // The month after the last tab is added by the timeline as a card-bill-only point.
+    expect(keys("nextYear")).toEqual(["2027-01", "2027-02"]);
+    expect(keys("y:2025")).toEqual(["2025-12"]);
+    expect(keys("all")).toHaveLength(timeline.length);
+  });
+
+  it("starts the next 12 months at the current month", () => {
+    expect(keys("next12")[0]).toBe("2026-09");
+  });
+
+  it("offers other years with data and skips empty ranges", () => {
+    const ids = rangeOptions(timeline, NOW).map((option) => option.id);
+    expect(ids).toEqual(["year", "ytd", "next12", "nextYear", "y:2025", "all"]);
+    expect(rangeOptions([], NOW).map((option) => option.id)).toEqual(["year"]);
+  });
+});
+
+describe("savings view", () => {
+  // Saved 300 and took 1000 out of the reserve in the same month: net poupado is negative.
+  const [july] = buildTimeline(
+    [
+      month("2026", "Julho", {
+        entradas: [entrada(9000), entrada(1000, "Res. Emergência", true)],
+        debitos: [debito(7000, "Moradia"), debito(300, "Investimentos", { isTransfer: true })],
+      }),
+    ],
+    NOW,
+  );
+
+  it("keeps the sheet's totals with savings and the day to day without", () => {
+    expect([july.entradas, july.debitos, july.poupado]).toEqual([10000, 7300, -700]);
+    const daily = viewPoint(july, false);
+    expect([daily.entradas, daily.debitos, daily.poupado]).toEqual([9000, 7000, -700]);
+    expect(viewPoint(july, true)).toBe(july);
+  });
+
+  it("gives the same saldo either way: entradas − débitos − cartão − poupado", () => {
+    const daily = viewPoint(july, false);
+    expect(daily.saldo).toBe(july.saldo);
+    expect((daily.entradas ?? 0) - (daily.debitos ?? 0) - daily.cartao - (daily.poupado ?? 0)).toBe(july.saldo);
+  });
+
+  it("averages entradas and saídas without the savings money in the day to day view", () => {
+    const [point] = buildTimeline(
+      [month("2026", "Julho", { entradas: [entrada(9000), entrada(1000, "Res. Emergência", true)], debitos: [debito(7000, "Moradia"), debito(300, "Investimentos", { isTransfer: true })] })],
+      NOW,
+    );
+    expect(summarizePeriod([point], true).avgEntradas).toBe(10000);
+    expect(summarizePeriod([point], false).avgEntradas).toBe(9000);
+    expect(summarizePeriod([point], false).avgSaidas).toBe(7000);
   });
 });

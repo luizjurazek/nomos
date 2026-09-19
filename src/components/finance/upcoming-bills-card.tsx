@@ -66,7 +66,7 @@ export function UpcomingBillsCard({ debitos, year, month, onSelect }: UpcomingBi
         <span className={`size-2.5 shrink-0 rounded-full ${hasOverdue ? "bg-destructive" : "bg-warning"}`} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">Contas a vencer</p>
-          <p className={`truncate text-xs ${hasOverdue ? "text-destructive" : "text-foreground-secondary"}`}>
+          <p className={`break-words text-xs ${hasOverdue ? "text-destructive" : "text-foreground-secondary"}`}>
             {bills.length} {bills.length === 1 ? "conta" : "contas"} · {dueLabel(bills[0].diff)}
           </p>
         </div>
@@ -82,7 +82,7 @@ export function UpcomingBillsCard({ debitos, year, month, onSelect }: UpcomingBi
             {bills.map(({ row, diff, key }) => (
               <li key={row.rowIndex} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm">{row.name}</p>
+                  <p className="break-words text-sm">{row.name}</p>
                   {/* dayLabel with no `today` always yields the plain date ("20 de setembro"), never "Hoje"/"Amanhã". */}
                   <p className={`text-xs ${diff < 0 ? "text-destructive" : "text-foreground-secondary"}`}>
                     {dueLabel(diff)} · {dayLabel(key, null)}

@@ -80,12 +80,13 @@ export function MonthSummaryDropdown({ kpis, savings }: { kpis: MonthKpis; savin
   ];
 
   return (
-    <section className="glass-surface overflow-hidden rounded-2xl border border-border">
+    // From lg the section may shrink inside the capped sidebar; its content then scrolls on its own.
+    <section className="glass-surface flex min-h-0 shrink flex-col overflow-hidden rounded-2xl border border-border">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between px-4 py-3 text-left"
+        className="flex w-full shrink-0 items-center justify-between px-4 py-3 text-left"
       >
         <span className="text-sm font-medium">Resumo do mês</span>
         <ChevronDown
@@ -93,7 +94,7 @@ export function MonthSummaryDropdown({ kpis, savings }: { kpis: MonthKpis; savin
         />
       </button>
       {open && (
-        <div className="divide-y divide-border border-t border-border">
+        <div className="min-h-0 divide-y divide-border overflow-y-auto border-t border-border [scrollbar-width:thin]">
           {sections.map((section) => (
             <div key={section.title} className="px-4 py-3">
               <div className="mb-2 flex items-baseline justify-between gap-3">

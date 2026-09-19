@@ -91,8 +91,9 @@ export function DateInput({ id, value, onChange, defaultMonth, defaultYear }: Da
           />
         </div>
       )}
-      <label className="flex min-h-11 items-center gap-2 text-sm text-muted-foreground">
+      <label className="flex min-h-12 items-center gap-3 text-sm text-muted-foreground max-sm:text-base">
         <Checkbox
+          className="max-sm:size-6 max-sm:[&_svg]:size-5!"
           checked={!parsed.dayKnown}
           onCheckedChange={(checked) => {
             if (checked) {

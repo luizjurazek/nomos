@@ -3,7 +3,6 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { TABLE_HEADER_COLORS } from "@/components/finance/table-colors";
 import {
   categoryBreakdown,
@@ -13,7 +12,7 @@ import {
   type CategoryKind,
   type CategoryOptions,
 } from "@/lib/analysis/categories";
-import { formatBRLWhole, formatPercent } from "@/lib/analysis/format";
+import { formatBRL, formatPercent } from "@/lib/analysis/format";
 import { monthKey, previousRef, refFromKey } from "@/lib/analysis/months";
 import type { AnalysisMonth } from "@/lib/analysis/types";
 import { TABLE_CONFIGS } from "@/lib/sheets/tableConfigs";
@@ -22,7 +21,7 @@ import { CategoryPie } from "./category-pie";
 import { CategoryStacked } from "./category-stacked";
 import { refLabel } from "./labels";
 import { MiniBars } from "./mini-bars";
-import type { Scope } from "./scope-switch";
+import type { Scope } from "./filter-bar";
 
 interface CategoryBreakdownProps {
   months: AnalysisMonth[];
@@ -34,6 +33,8 @@ interface CategoryBreakdownProps {
   periodLabel: string;
   /** Months after the current one (planned values). */
   projectedKeys: Set<string>;
+  /** The page-wide "Incluir poupança" switch: transfers (savings and reserve withdrawals) count in the totals. */
+  withSavings: boolean;
 }
 
 type View = "ranking" | "pie" | "stacked" | "heatmap";
@@ -66,11 +67,10 @@ const KINDS: { kind: CategoryKind; label: string }[] = [
  * Where the money goes (or comes from). Scope "month": the selected month, with the change vs the month
  * before. Scope "period": every month of the period together, plus two views over time (stacked, heat map).
  */
-export function CategoryBreakdown({ months, selectedKey, onSelectMonth, scope, periodKeys, periodLabel, projectedKeys }: CategoryBreakdownProps) {
+export function CategoryBreakdown({ months, selectedKey, onSelectMonth, scope, periodKeys, periodLabel, projectedKeys, withSavings: includeTransfers }: CategoryBreakdownProps) {
   const [kind, setKind] = useState<CategoryKind>("saidas");
-  const [includeTransfers, setIncludeTransfers] = useState(true);
   const [openCategory, setOpenCategory] = useState<string | null>(null);
-  const [view, setView] = useState<View>("ranking");
+  const [view, setView] = useState<View>("pie");
 
   const options: CategoryOptions = useMemo(() => ({ kind, includeTransfers }), [kind, includeTransfers]);
   // The views over time only make sense for a whole period; in month scope only ranking and pie apply.
@@ -153,17 +153,13 @@ export function CategoryBreakdown({ months, selectedKey, onSelectMonth, scope, p
             );
           })}
         </div>
-        <label className="flex items-center gap-2 text-sm text-foreground-secondary">
-          <Checkbox checked={includeTransfers} onCheckedChange={(checked) => setIncludeTransfers(checked === true)} />
-          Incluir transferências
-        </label>
       </div>
       <div className="flex flex-col gap-1.5 rounded-2xl border border-border bg-muted/30 px-3 py-2.5 text-xs text-foreground-secondary">
         <p>
           {kind === "saidas"
             ? "Transferência é dinheiro que você guardou, não gastou (ex.: aporte em investimento ou na reserva de emergência)."
             : "Transferência é dinheiro seu que voltou pra você, não renda nova (ex.: retirada da reserva de emergência)."}{" "}
-          {includeTransfers ? "Agora elas estão somadas nos totais abaixo." : "Por padrão elas ficam fora dos totais abaixo."}
+          {includeTransfers ? "Elas estão somadas nos totais abaixo (\"Incluir poupança\" ligado)." : "Elas ficam fora dos totais abaixo (visão do dia a dia)."}
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
           <span>Categorias tratadas como transferência:</span>
@@ -207,8 +203,8 @@ export function CategoryBreakdown({ months, selectedKey, onSelectMonth, scope, p
                   className="flex w-full flex-col gap-2 px-4 py-3 text-left transition-colors hover:bg-accent/40"
                 >
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="truncate text-sm font-medium">{row.categoria}</span>
-                    <span className="shrink-0 text-sm font-semibold tabular-nums">{formatBRLWhole(row.total)}</span>
+                    <span className="break-words text-sm font-medium">{row.categoria}</span>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums">{formatBRL(row.total)}</span>
                   </div>
                   <div className="h-2 rounded-full bg-muted">
                     <div className="h-full rounded-full" style={{ width: `${Math.max(2, (row.total / top) * 100)}%`, backgroundColor: color }} />
@@ -216,7 +212,7 @@ export function CategoryBreakdown({ months, selectedKey, onSelectMonth, scope, p
                   <div className="flex items-center justify-between text-xs text-foreground-secondary">
                     <span>{formatPercent(row.share)} do total</span>
                     {row.average !== null ? (
-                      <span>média {formatBRLWhole(row.average)}/mês</span>
+                      <span>média {formatBRL(row.average)}/mês</span>
                     ) : row.delta === null ? (
                       <span>sem comparação</span>
                     ) : row.delta === 0 ? (

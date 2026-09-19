@@ -1,6 +1,6 @@
 "use client";
 
-import { formatBRLWhole, formatCompact } from "@/lib/analysis/format";
+import { formatBRL, formatCompact } from "@/lib/analysis/format";
 import { refFromKey, shortMonth } from "@/lib/analysis/months";
 import type { CategoryKind, CategoryMatrix } from "@/lib/analysis/categories";
 import { heatColor, heatTextColor } from "./category-colors";
@@ -61,7 +61,7 @@ export function CategoryHeatmap({ matrix, kind, selectedKey, projectedKeys, onSe
               const rowMax = Math.max(...category.totals);
               return (
                 <tr key={category.categoria}>
-                  <th scope="row" className="sticky left-0 z-10 max-w-40 truncate border-t border-border bg-card px-3 py-1.5 text-left font-medium">
+                  <th scope="row" className="sticky left-0 z-10 max-w-40 break-words border-t border-border bg-card px-3 py-1.5 text-left font-medium">
                     {category.categoria}
                   </th>
                   {category.totals.map((value, index) => {
@@ -70,7 +70,7 @@ export function CategoryHeatmap({ matrix, kind, selectedKey, projectedKeys, onSe
                     return (
                       <td key={key} className="border-t border-border p-0.5">
                         <div
-                          title={`${category.categoria} · ${refLabel(refFromKey(key))}: ${formatBRLWhole(value)}`}
+                          title={`${category.categoria} · ${refLabel(refFromKey(key))}: ${formatBRL(value)}`}
                           className={`flex h-8 items-center justify-center rounded-md ${key === selectedKey ? "ring-2 ring-foreground/40 ring-inset" : ""}`}
                           style={step === null ? undefined : { backgroundColor: heatColor(kind, step), color: heatTextColor(step) }}
                         >
@@ -79,7 +79,7 @@ export function CategoryHeatmap({ matrix, kind, selectedKey, projectedKeys, onSe
                       </td>
                     );
                   })}
-                  <td className="border-t border-border px-3 py-1.5 text-right font-medium">{formatBRLWhole(category.total)}</td>
+                  <td className="border-t border-border px-3 py-1.5 text-right font-medium">{formatBRL(category.total)}</td>
                 </tr>
               );
             })}
@@ -92,7 +92,7 @@ export function CategoryHeatmap({ matrix, kind, selectedKey, projectedKeys, onSe
                   {formatCompact(value)}
                 </td>
               ))}
-              <td className="border-t border-border px-3 py-2 text-right">{formatBRLWhole(total)}</td>
+              <td className="border-t border-border px-3 py-2 text-right">{formatBRL(total)}</td>
             </tr>
           </tfoot>
         </table>
