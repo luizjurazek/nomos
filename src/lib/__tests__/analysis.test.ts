@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { categoryBreakdown, categoryBreakdownForPeriod, categoryMatrix, categorySeries } from "../analysis/categories";
-import { baseName, freedByMonth, listInstallmentPlans } from "../analysis/installments";
+import { categoryBreakdown, categoryBreakdownForPeriod, categoryMatrix, categorySeries, pieSlices } from "../analysis/categories";
+import { baseName, freedByMonth, installmentsByBill, listInstallmentPlans, summarizePlans, upcomingBills, withTrailingDrops } from "../analysis/installments";
 import { addMonths, monthKey, refFromKey } from "../analysis/months";
 import { parseMonth } from "../analysis/parseMonth";
 import { monthDataNet, summarizeSavings } from "../analysis/savings";
@@ -201,6 +201,24 @@ describe("categoryBreakdown", () => {
   });
 });
 
+describe("pieSlices", () => {
+  const rows = [400, 300, 100, 80, 60, 40, 15, 5].map((total, index) => ({ categoria: `C${index + 1}`, total }));
+
+  it("keeps the top categories and groups the rest as Outras", () => {
+    const slices = pieSlices(rows);
+    expect(slices.map((slice) => slice.categoria)).toEqual(["C1", "C2", "C3", "C4", "C5", "C6", "Outras"]);
+    expect(slices.at(-1)).toMatchObject({ total: 20, isOther: true });
+    expect(slices.reduce((acc, slice) => acc + slice.share, 0)).toBeCloseTo(1);
+  });
+
+  it("ignores non-positive totals and handles an empty list", () => {
+    expect(pieSlices([{ categoria: "A", total: 0 }, { categoria: "B", total: -5 }])).toEqual([]);
+    expect(pieSlices([{ categoria: "A", total: 50 }, { categoria: "B", total: -5 }])).toEqual([
+      { categoria: "A", total: 50, share: 1, isOther: false },
+    ]);
+  });
+});
+
 describe("installments", () => {
   it("strips the marker from the name", () => {
     expect(baseName("Tênis Ana - Loja Exemplo 5/6")).toBe("Tênis Ana - Loja Exemplo");
@@ -226,6 +244,54 @@ describe("installments", () => {
       ["2026-11", 60],
       ["2026-12", 100],
     ]);
+    expect(freedByMonth(plans).map((item) => item.names)).toEqual([["Fone"], ["Sofá"]]);
+  });
+
+  it("adds up installments per bill and over all plans", () => {
+    const september = month("2026", "Setembro", {
+      nubank: [nubank(100, "Compras", { current: 3, total: 4 }, "Sofá 3/4"), nubank(60, "Compras", { current: 1, total: 2 }, "Fone 1/2")],
+    });
+    const plans = listInstallmentPlans(september);
+    // Sofá is in Setembro's bill (charge 2), Outubro's and Novembro's; Fone starts in Outubro and ends in Novembro.
+    expect([...installmentsByBill(plans)].sort()).toEqual([
+      ["2026-09", 100],
+      ["2026-10", 160],
+      ["2026-11", 160],
+    ]);
+    expect(summarizePlans(plans)).toEqual({ count: 2, paid: 200, remaining: 320, total: 520 });
+  });
+
+  it("adds the month the last bill drops as a regular row", () => {
+    const points = buildTimeline([month("2026", "Setembro", { nubank: [nubank(100, "Compras", { current: 3, total: 4 }, "Sofá 3/4")] })], NOW);
+    const bills = points.filter((point) => point.source === "installments");
+    const freed = freedByMonth(listInstallmentPlans(month("2026", "Setembro", { nubank: [nubank(100, "Compras", { current: 3, total: 4 }, "Sofá 3/4")] })));
+    const extended = withTrailingDrops(bills, freed);
+    expect(extended.map((point) => [point.key, point.cartao])).toEqual([
+      ["2026-10", 100],
+      ["2026-11", 100],
+      ["2026-12", 0],
+    ]);
+  });
+
+  it("lists every projected bill plus the drop, even with more months than the minimum", () => {
+    const september = month("2026", "Setembro", { nubank: [nubank(100, "Compras", { current: 1, total: 9 }, "Sofá 1/9")] });
+    const points = buildTimeline([september], NOW);
+    const freed = freedByMonth(listInstallmentPlans(september));
+    // Bills go from Outubro to Junho (9 charges); the bill only drops in Julho, which has no point of its own.
+    const bills = upcomingBills(points, "2026-10", freed, 3);
+    expect(bills.map((point) => point.key).at(-1)).toBe(monthKey(freed[0].ref));
+    expect(bills.at(-1)?.cartao).toBe(0);
+    expect(bills).toHaveLength(9 + 1);
+  });
+
+  it("splits an installment into what is paid, what is left and the total", () => {
+    // 3/4 in Setembro's table: 2 bills already paid, the 3rd goes into Outubro's bill, the 4th into Novembro's.
+    const september = month("2026", "Setembro", { nubank: [nubank(99.9, "Compras", { current: 3, total: 4 }, "Sofá 3/4")] });
+    const [plan] = listInstallmentPlans(september);
+    expect([plan.paidCount, plan.remainingCount]).toEqual([2, 2]);
+    expect(plan.paidAmount).toBeCloseTo(199.8);
+    expect(plan.remainingAmount).toBeCloseTo(199.8);
+    expect(plan.totalAmount).toBeCloseTo(399.6);
   });
 });
 

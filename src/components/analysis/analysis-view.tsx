@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { freedByMonth, listInstallmentPlans } from "@/lib/analysis/installments";
+import { freedByMonth, installmentsByBill, listInstallmentPlans, summarizePlans, upcomingBills } from "@/lib/analysis/installments";
 import { MonthRef, monthKey, refFromKey, type Now } from "@/lib/analysis/months";
 import { buildTimeline, pickReferenceMonth, summarizePeriod } from "@/lib/analysis/timeline";
 import type { AnalysisMonth } from "@/lib/analysis/types";
@@ -64,7 +64,9 @@ export function AnalysisView({ months, now }: AnalysisViewProps) {
   const reference = useMemo(() => pickReferenceMonth(months, now), [months, now]);
   const plans = useMemo(() => (reference ? listInstallmentPlans(reference) : []), [reference]);
   const freed = useMemo(() => freedByMonth(plans), [plans]);
-  const bills = useMemo(() => timeline.filter((point) => point.key >= currentKey).slice(0, NEXT_BILLS), [timeline, currentKey]);
+  const bills = useMemo(() => upcomingBills(timeline, currentKey, freed, NEXT_BILLS), [timeline, currentKey, freed]);
+  const installmentBills = useMemo(() => installmentsByBill(plans), [plans]);
+  const plansTotals = useMemo(() => summarizePlans(plans), [plans]);
 
   return (
     <div className="flex flex-col gap-5 lg:gap-6">
@@ -136,7 +138,7 @@ export function AnalysisView({ months, now }: AnalysisViewProps) {
                   </div>
                 )}
                 <div className="lg:col-start-1 lg:row-start-2">
-                  <InstallmentsPanel bills={bills} plans={plans} freed={freed} />
+                  <InstallmentsPanel bills={bills} plans={plans} freed={freed} installmentBills={installmentBills} totals={plansTotals} />
                 </div>
               </div>
             </>

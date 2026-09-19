@@ -18,6 +18,7 @@ import { monthKey, previousRef, refFromKey } from "@/lib/analysis/months";
 import type { AnalysisMonth } from "@/lib/analysis/types";
 import { TABLE_CONFIGS } from "@/lib/sheets/tableConfigs";
 import { CategoryHeatmap } from "./category-heatmap";
+import { CategoryPie } from "./category-pie";
 import { CategoryStacked } from "./category-stacked";
 import { refLabel } from "./labels";
 import { MiniBars } from "./mini-bars";
@@ -35,10 +36,11 @@ interface CategoryBreakdownProps {
   projectedKeys: Set<string>;
 }
 
-type View = "ranking" | "stacked" | "heatmap";
+type View = "ranking" | "pie" | "stacked" | "heatmap";
 
 const VIEWS: { id: View; label: string; onlyPeriod?: boolean }[] = [
   { id: "ranking", label: "Ranking" },
+  { id: "pie", label: "Pizza" },
   { id: "stacked", label: "Por mês", onlyPeriod: true },
   { id: "heatmap", label: "Mapa de calor", onlyPeriod: true },
 ];
@@ -71,8 +73,8 @@ export function CategoryBreakdown({ months, selectedKey, onSelectMonth, scope, p
   const [view, setView] = useState<View>("ranking");
 
   const options: CategoryOptions = useMemo(() => ({ kind, includeTransfers }), [kind, includeTransfers]);
-  // The views over time only make sense for a whole period; in month scope we always show the ranking.
-  const activeView: View = scope === "period" ? view : "ranking";
+  // The views over time only make sense for a whole period; in month scope only ranking and pie apply.
+  const activeView: View = scope === "period" || view === "pie" ? view : "ranking";
 
   const monthBreakdown = useMemo(() => categoryBreakdown(months, selectedKey, options), [months, selectedKey, options]);
   const periodBreakdown = useMemo(() => categoryBreakdownForPeriod(months, periodKeys, options), [months, periodKeys, options]);
@@ -187,6 +189,8 @@ export function CategoryBreakdown({ months, selectedKey, onSelectMonth, scope, p
         <CategoryStacked matrix={matrix} selectedKey={selectedKey} projectedKeys={projectedKeys} onSelectMonth={onSelectMonth} />
       ) : activeView === "heatmap" && matrix ? (
         <CategoryHeatmap matrix={matrix} kind={kind} selectedKey={selectedKey} projectedKeys={projectedKeys} onSelectMonth={onSelectMonth} />
+      ) : activeView === "pie" ? (
+        <CategoryPie rows={rows} totalLabel={KINDS.find((option) => option.kind === kind)?.label ?? ""} />
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
           {rows.map((row) => {

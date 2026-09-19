@@ -225,3 +225,24 @@ export function categoryMatrix(months: AnalysisMonth[], keys: string[], options:
   const monthTotals = present.map((_, index) => all.reduce((acc, category) => acc + category.totals[index], 0));
   return { keys: present, categories, monthTotals, total: monthTotals.reduce((acc, value) => acc + value, 0) };
 }
+
+export interface PieSlice {
+  categoria: string;
+  total: number;
+  /** Fraction of the pie, 0..1. */
+  share: number;
+  /** The "Outras" slice that groups the smallest categories. */
+  isOther: boolean;
+}
+
+/** Categories (biggest first) as pie slices: the top `maxSlices` plus one "Outras" slice for the rest. Non-positive totals are left out. */
+export function pieSlices(rows: { categoria: string; total: number }[], maxSlices = 6): PieSlice[] {
+  const positive = rows.filter((row) => row.total > 0);
+  const sum = positive.reduce((acc, row) => acc + row.total, 0);
+  if (sum === 0) return [];
+  const slice = (categoria: string, total: number, isOther: boolean): PieSlice => ({ categoria, total, share: total / sum, isOther });
+  const top = positive.slice(0, maxSlices).map((row) => slice(row.categoria, row.total, false));
+  const rest = positive.slice(maxSlices);
+  if (rest.length === 0) return top;
+  return [...top, slice(OTHER_CATEGORIES, rest.reduce((acc, row) => acc + row.total, 0), true)];
+}
