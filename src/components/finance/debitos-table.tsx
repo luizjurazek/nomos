@@ -6,6 +6,7 @@ import type { DebitoRow } from "@/lib/sheets/types";
 import { EntryFormDialog } from "./entry-form-dialog";
 import { EntryList } from "./entry-list";
 import { EntryRow } from "./entry-row";
+import { InstallmentBadge } from "./installment-badge";
 import { TableFooterStats } from "./table-footer-stats";
 import { TABLE_HEADER_COLORS } from "./table-colors";
 import { TableSectionHeader } from "./table-section-header";
@@ -39,6 +40,7 @@ export function DebitosTable({
       <EntryList
         rows={optimisticRows}
         filterable
+        memoryKey="debitos"
         emptyMessage="Nenhum lançamento ainda."
         renderRow={(row) => (
           <EntryRow
@@ -49,6 +51,7 @@ export function DebitosTable({
             badges={
               <>
                 {row.isPoupanca && <TagBadge tag="poupanca" />}
+                {row.installment && <InstallmentBadge installment={row.installment} />}
                 {row.isCardRollover && (
                   <Badge variant="outline" className="font-normal">
                     Sincronizado automaticamente

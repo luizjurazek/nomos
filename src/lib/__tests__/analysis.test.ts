@@ -1,22 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { categoryBreakdown, categoryBreakdownForPeriod, categoryMatrix, categorySeries, pieSlices } from "../analysis/categories";
-import { baseName, freedByMonth, installmentsByBill, listInstallmentPlans, summarizePlans, upcomingBills, withTrailingDrops } from "../analysis/installments";
+import { baseName, freedByMonth, installmentsByBill, listInstallmentPlans, listLedgerPlans, summarizePlans, upcomingBills, withTrailingDrops } from "../analysis/installments";
 import { addMonths, monthKey, refFromKey } from "../analysis/months";
 import { parseMonth } from "../analysis/parseMonth";
 import { monthDataNet, summarizeSavings } from "../analysis/savings";
 import { pointsInRange, rangeOptions } from "../analysis/ranges";
-import { buildTimeline, pickReferenceMonth, summarizePeriod, viewPoint } from "../analysis/timeline";
+import { buildTimeline, committedView, pickReferenceMonth, summarizePeriod, viewPoint } from "../analysis/timeline";
 import type { AnalysisDebito, AnalysisEntrada, AnalysisMonth, AnalysisNubank } from "../analysis/types";
 import type { SheetGrid } from "../sheets/types";
 import { TABLE_CONFIGS } from "../sheets/tableConfigs";
 import { loadNovembroFixture } from "./locateTables.fixtures";
 
-const entrada = (valor: number, categoria = "Salário", isTransfer = false): AnalysisEntrada => ({
+const entrada = (valor: number, categoria = "Salário", isTransfer = false, extra: Partial<AnalysisEntrada> = {}): AnalysisEntrada => ({
   date: "xx/01/2026",
   name: categoria,
   categoria,
   valor,
+  installment: null,
   isTransfer,
+  ...extra,
 });
 
 const debito = (valor: number, categoria: string, extra: Partial<AnalysisDebito> = {}): AnalysisDebito => ({
@@ -24,6 +26,7 @@ const debito = (valor: number, categoria: string, extra: Partial<AnalysisDebito>
   name: categoria,
   categoria,
   valor,
+  installment: null,
   isTransfer: false,
   isCardRollover: false,
   ...extra,
@@ -117,6 +120,70 @@ describe("buildTimeline", () => {
 
   it("returns nothing without data", () => {
     expect(buildTimeline([], NOW)).toEqual([]);
+  });
+
+  describe("installments in Entradas and Débitos", () => {
+    const september = month("2026", "Setembro", {
+      entradas: [entrada(1000, "Empréstimo", false, { installment: { current: 19, total: 20 } }), entrada(5000)],
+      debitos: [debito(700, "Carro", { installment: { current: 47, total: 58 } }), debito(300, "Mercado")],
+      nubank: [nubank(200, "Compras", { current: 1, total: 3 }, "Sofá 1/3")],
+    });
+
+    it("carries them month by month, landing in the month itself (the card stays one month behind)", () => {
+      const extra = buildTimeline([september], NOW).filter((point) => point.source === "installments");
+      expect(extra).toHaveLength(11);
+      // Outubro: the loan has its last installment, the car is at 48/58, the bill is the whole Nubank table.
+      expect(extra[0].committed).toEqual({ entradas: 1000, debitos: 700, saldo: 1000 - 700 - 200 });
+      // Novembro: the loan is over (19/20 + 1 = 20/20 was Outubro), the sofa still charges.
+      expect(extra[1].committed).toEqual({ entradas: 0, debitos: 700, saldo: -700 - 200 });
+      expect(extra[2].committed).toEqual({ entradas: 0, debitos: 700, saldo: -700 - 200 });
+      expect(extra[3].committed).toEqual({ entradas: 0, debitos: 700, saldo: -700 });
+      // 58 − 47 = 11 charges left after Setembro: the car ends in Agosto/2027.
+      expect(extra.at(-1)?.key).toBe("2027-08");
+      expect(extra.at(-1)?.committed?.debitos).toBe(700);
+    });
+
+    it("leaves the real columns unknown so charts and period totals ignore those months", () => {
+      const extra = buildTimeline([september], NOW).filter((point) => point.source === "installments");
+      expect(extra.every((point) => point.entradas === null && point.debitos === null && point.saldo === null)).toBe(true);
+      expect(summarizePeriod(buildTimeline([september], NOW)).months).toBe(1);
+    });
+
+    it("shows the contracted amounts as a row through committedView", () => {
+      const point = buildTimeline([september], NOW).find((item) => item.key === "2026-10")!;
+      expect(committedView(point)).toMatchObject({ entradas: 1000, debitos: 700, saldo: 100 });
+      const sheetPoint = buildTimeline([september], NOW)[0];
+      expect(committedView(sheetPoint)).toBe(sheetPoint);
+    });
+
+    it("caps the projection at the horizon and ignores the synced card line", () => {
+      const long = month("2026", "Setembro", {
+        debitos: [debito(700, "Carro", { installment: { current: 1, total: 58 } }), debito(900, "Cartão de crédito", { isCardRollover: true, installment: { current: 1, total: 5 } })],
+      });
+      const extra = buildTimeline([long], NOW).filter((point) => point.source === "installments");
+      expect(extra).toHaveLength(12);
+      expect(extra.every((point) => point.committed?.debitos === 700)).toBe(true);
+    });
+
+    it("keeps committed null when only the card has installments", () => {
+      const cardOnly = month("2026", "Setembro", { nubank: [nubank(400, "Compras", { current: 2, total: 4 }, "Sofá 2/4")] });
+      const extra = buildTimeline([cardOnly], NOW).filter((point) => point.source === "installments");
+      expect(extra.every((point) => point.committed === null)).toBe(true);
+    });
+
+    it("keeps going past the card's last bill while a débito plan runs", () => {
+      const mixed = month("2026", "Setembro", {
+        debitos: [debito(700, "Carro", { installment: { current: 1, total: 5 } })],
+        nubank: [nubank(100)],
+      });
+      const extra = buildTimeline([mixed], NOW).filter((point) => point.source === "installments");
+      expect(extra.map((point) => [point.key, point.cartao, point.committed?.debitos])).toEqual([
+        ["2026-10", 100, 700],
+        ["2026-11", 0, 700],
+        ["2026-12", 0, 700],
+        ["2027-01", 0, 700],
+      ]);
+    });
   });
 });
 
@@ -601,5 +668,24 @@ describe("savings view", () => {
     expect(summarizePeriod([point], true).avgEntradas).toBe(10000);
     expect(summarizePeriod([point], false).avgEntradas).toBe(9000);
     expect(summarizePeriod([point], false).avgSaidas).toBe(7000);
+  });
+});
+
+describe("ledger installment plans", () => {
+  it("lists the plans of Entradas and Débitos with the last month worked out by arithmetic", () => {
+    const september = month("2026", "Setembro", {
+      entradas: [entrada(1000, "Empréstimo", false, { name: "Empréstimo Euflausinos 3/20", installment: { current: 3, total: 20 } })],
+      debitos: [
+        debito(700, "Carro", { name: "47/58 Carro", installment: { current: 47, total: 58 } }),
+        debito(900, "Cartão de crédito", { isCardRollover: true }),
+        debito(50, "Mercado"),
+      ],
+    });
+    const plans = listLedgerPlans(september);
+    expect(plans.map((plan) => [plan.kind, plan.name, monthKey(plan.lastMonth)])).toEqual([
+      ["debito", "Carro", "2027-08"],
+      ["entrada", "Empréstimo Euflausinos", "2028-02"],
+    ]);
+    expect(plans[1]).toMatchObject({ doneCount: 3, remainingCount: 17, doneAmount: 3000, remainingAmount: 17000, totalAmount: 20000 });
   });
 });

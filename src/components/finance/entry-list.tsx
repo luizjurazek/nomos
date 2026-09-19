@@ -1,12 +1,13 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/format/currency";
 import { UNKNOWN_DAY_KEY, dayLabel, daysFromToday, groupRowsByDay } from "@/lib/format/dayGroups";
 import { useToday } from "./use-today";
+import { readFilters, rememberFilters, type ListFilters } from "./view-memory";
 
 interface ListRow {
   rowIndex: number;
@@ -23,6 +24,8 @@ interface EntryListProps<T extends ListRow> {
   emptyMessage: string;
   /** Search box + category badges above the list. Off for lists without categories to filter by. */
   filterable?: boolean;
+  /** Identifies the list so its filters survive a change of month (they are remembered per list). */
+  memoryKey?: string;
 }
 
 /** Lowercase and strip accents so "cafe" finds "Café". */
@@ -77,11 +80,15 @@ function FilterSelect({
 }
 
 /** A list of rows grouped by day (Hoje, Ontem, 12 de setembro...), optionally filtered by text and category. */
-export function EntryList<T extends ListRow>({ rows, renderRow, emptyMessage, filterable = false }: EntryListProps<T>) {
+export function EntryList<T extends ListRow>({ rows, renderRow, emptyMessage, filterable = false, memoryKey }: EntryListProps<T>) {
   const today = useToday();
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("");
-  const [quem, setQuem] = useState("");
+  const [filters, setFilters] = useState<ListFilters>(() => readFilters(memoryKey));
+  useEffect(() => {
+    if (memoryKey) rememberFilters(memoryKey, filters);
+  }, [memoryKey, filters]);
+  const setQuery = (query: string) => setFilters((prev) => ({ ...prev, query }));
+  const setCategory = (category: string) => setFilters((prev) => ({ ...prev, category }));
+  const setQuem = (quem: string) => setFilters((prev) => ({ ...prev, quem }));
 
   const categories = useMemo(
     () => [...new Set(rows.map((row) => row.categoria?.trim() ?? "").filter(Boolean))],
@@ -89,6 +96,13 @@ export function EntryList<T extends ListRow>({ rows, renderRow, emptyMessage, fi
   );
 
   const people = useMemo(() => [...new Set(rows.map((row) => row.quem?.trim() ?? "").filter(Boolean))], [rows]);
+
+  const showCategories = filterable && categories.length > 1;
+  const showPeople = filterable && people.length > 1;
+  // A remembered choice only counts while its dropdown is there and the option exists in this month.
+  const { query } = filters;
+  const category = showCategories && categories.includes(filters.category) ? filters.category : "";
+  const quem = showPeople && people.includes(filters.quem) ? filters.quem : "";
 
   const filtered = useMemo(() => {
     const needle = normalize(query.trim());
@@ -102,8 +116,6 @@ export function EntryList<T extends ListRow>({ rows, renderRow, emptyMessage, fi
 
   const groups = useMemo(() => groupRowsByDay(filtered), [filtered]);
   const filtering = Boolean(query.trim() || category || quem);
-  const showCategories = filterable && categories.length > 1;
-  const showPeople = filterable && people.length > 1;
 
   return (
     <div className="flex flex-col gap-3">

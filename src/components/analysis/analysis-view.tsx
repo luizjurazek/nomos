@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { freedByMonth, installmentsByBill, listInstallmentPlans, summarizePlans, upcomingBills } from "@/lib/analysis/installments";
+import { freedByMonth, installmentsByBill, listInstallmentPlans, listLedgerPlans, summarizePlans, upcomingBills } from "@/lib/analysis/installments";
 import { refFromKey, type Now } from "@/lib/analysis/months";
 import { currentKeyOf, pointsInRange, rangeOptions, type RangeId } from "@/lib/analysis/ranges";
 import { buildTimeline, pickReferenceMonth, summarizePeriod, viewPoints } from "@/lib/analysis/timeline";
@@ -11,6 +11,7 @@ import { InstallmentsPanel } from "./installments-panel";
 import { FilterFab, type Scope } from "./filter-bar";
 import { refLabel } from "./labels";
 import { MonthlyChart } from "./monthly-chart";
+import { CarryInstallmentsButton } from "./carry-installments-button";
 import { RefreshButton } from "./refresh-button";
 import { SectionHeader } from "./section-header";
 import { SummaryCards } from "./summary-cards";
@@ -25,7 +26,8 @@ interface AnalysisViewProps {
 export function AnalysisView({ months, now }: AnalysisViewProps) {
   const [range, setRange] = useState<RangeId>("year");
   const [pickedKey, setPickedKey] = useState<string | null>(null);
-  const [scope, setScope] = useState<Scope>("period");
+  // The current month is in focus by default; "all months" is one tap away in the filters.
+  const [scope, setScope] = useState<Scope>("month");
   // Day to day by default; with savings the numbers are the sheet's own (see viewPoint).
   const [withSavings, setWithSavings] = useState(false);
 
@@ -34,11 +36,17 @@ export function AnalysisView({ months, now }: AnalysisViewProps) {
   const ranges = useMemo(() => rangeOptions(timeline, now), [timeline, now]);
   const visible = useMemo(() => pointsInRange(timeline, range, now), [timeline, range, now]);
 
-  // A new period starts from its default month and describes the whole period again.
+  // Choosing a period means looking at the period: every month of it, with any earlier month pick dropped.
   const changeRange = (next: RangeId) => {
     setRange(next);
     setPickedKey(null);
     setScope("period");
+  };
+  // Back to the default view: the default month in focus, savings left out. The period itself is not a filter, so it stays.
+  const resetFilters = () => {
+    setPickedKey(null);
+    setScope("month");
+    setWithSavings(false);
   };
   // Picking a month anywhere (filter, chart, table, categories) focuses the summary and the categories on it.
   const focusMonth = (key: string | null) => {
@@ -50,13 +58,15 @@ export function AnalysisView({ months, now }: AnalysisViewProps) {
     setScope("month");
   };
 
-  // The picked month wins while it is on screen; otherwise land on the current month, else the closest tab before it.
-  const selectedKey = useMemo(() => {
-    if (pickedKey && visible.some((point) => point.key === pickedKey)) return pickedKey;
+  // Default month: the current one, else the closest tab before it.
+  const defaultKey = useMemo(() => {
     if (visible.some((point) => point.key === currentKey)) return currentKey;
     const sheet = visible.filter((point) => point.source === "sheet");
     return (sheet.filter((point) => point.key <= currentKey).at(-1) ?? sheet[0] ?? visible[0])?.key ?? null;
-  }, [pickedKey, visible, currentKey]);
+  }, [visible, currentKey]);
+  // The picked month wins while it is on screen.
+  const selectedKey = pickedKey && visible.some((point) => point.key === pickedKey) ? pickedKey : defaultKey;
+  const filtered = withSavings || scope === "period" || selectedKey !== defaultKey;
 
   const summary = useMemo(() => summarizePeriod(visible, withSavings), [visible, withSavings]);
   const shown = useMemo(() => viewPoints(visible, withSavings), [visible, withSavings]);
@@ -69,6 +79,7 @@ export function AnalysisView({ months, now }: AnalysisViewProps) {
 
   const reference = useMemo(() => pickReferenceMonth(months, now), [months, now]);
   const plans = useMemo(() => (reference ? listInstallmentPlans(reference) : []), [reference]);
+  const ledgerPlans = useMemo(() => (reference ? listLedgerPlans(reference) : []), [reference]);
   const freed = useMemo(() => freedByMonth(plans), [plans]);
   const bills = useMemo(() => upcomingBills(timeline, currentKey, freed, NEXT_BILLS), [timeline, currentKey, freed]);
   const installmentBills = useMemo(() => installmentsByBill(plans), [plans]);
@@ -85,7 +96,10 @@ export function AnalysisView({ months, now }: AnalysisViewProps) {
               : `${periodLabel} · ${scope === "month" && monthLabel ? monthLabel : "todos os meses"}`}
           </p>
         </div>
-        <RefreshButton />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <CarryInstallmentsButton />
+          <RefreshButton />
+        </div>
       </div>
 
       {timeline.length === 0 ? (
@@ -125,7 +139,7 @@ export function AnalysisView({ months, now }: AnalysisViewProps) {
                   </div>
                 )}
                 <div>
-                  <InstallmentsPanel bills={bills} plans={plans} freed={freed} installmentBills={installmentBills} totals={plansTotals} />
+                  <InstallmentsPanel bills={bills} plans={plans} ledgerPlans={ledgerPlans} freed={freed} installmentBills={installmentBills} totals={plansTotals} />
                 </div>
               </div>
             </>
@@ -141,6 +155,8 @@ export function AnalysisView({ months, now }: AnalysisViewProps) {
           scope={scope}
           selectedKey={selectedKey}
           onMonth={focusMonth}
+          filtered={filtered}
+          onReset={resetFilters}
           withSavings={withSavings}
           onWithSavings={setWithSavings}
         />

@@ -12,7 +12,10 @@ export interface TableTypeConfig {
   /** Prefixes (case-insensitive) that mark the end of this table's data range, in the order they're expected to appear. */
   totalRowPrefixes: string[];
   categoryListKey: "Entradas" | "Saidas" | null;
+  /** Reads a "3/20" marker from the row name (installment badge, projection past the last tab). */
   installmentParsing: boolean;
+  /** The entry form can create a run of installment rows at once ("Parcelas" field). */
+  bulkInstallments: boolean;
   semanticTags: { category: string; tag: SemanticTag }[];
   /** Label for the checkbox column, e.g. "Recebido" vs "Pago" — null when the table has no checkbox. */
   checkboxLabel: string | null;
@@ -30,7 +33,8 @@ export const TABLE_CONFIGS: Record<TableId, TableTypeConfig> = {
     hasOwnHeaderRow: true,
     totalRowPrefixes: ["total recebido", "total previsto"],
     categoryListKey: "Entradas",
-    installmentParsing: false,
+    installmentParsing: true,
+    bulkInstallments: false,
     semanticTags: [{ category: "Res. Emergência", tag: "transferenciaReserva" }],
     checkboxLabel: "Recebido",
   },
@@ -43,7 +47,8 @@ export const TABLE_CONFIGS: Record<TableId, TableTypeConfig> = {
     hasOwnHeaderRow: true,
     totalRowPrefixes: ["total pago", "total previsto"],
     categoryListKey: "Saidas",
-    installmentParsing: false,
+    installmentParsing: true,
+    bulkInstallments: false,
     // Money set aside, not spent: both categories are savings when they show up as a débito.
     semanticTags: [
       { category: "Investimentos", tag: "poupanca" },
@@ -61,6 +66,7 @@ export const TABLE_CONFIGS: Record<TableId, TableTypeConfig> = {
     totalRowPrefixes: ["total"],
     categoryListKey: "Saidas",
     installmentParsing: true,
+    bulkInstallments: true,
     semanticTags: [],
     checkboxLabel: null,
   },
@@ -76,6 +82,7 @@ export const TABLE_CONFIGS: Record<TableId, TableTypeConfig> = {
     totalRowPrefixes: [],
     categoryListKey: null,
     installmentParsing: false,
+    bulkInstallments: false,
     semanticTags: [],
     checkboxLabel: "Recebido",
   },
@@ -89,6 +96,7 @@ export const TABLE_CONFIGS: Record<TableId, TableTypeConfig> = {
     totalRowPrefixes: ["total"],
     categoryListKey: null,
     installmentParsing: false,
+    bulkInstallments: false,
     semanticTags: [],
     checkboxLabel: "Pago",
   },

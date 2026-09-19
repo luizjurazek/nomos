@@ -22,6 +22,10 @@ interface FilterFabProps {
   selectedKey: string | null;
   /** null = the whole period. */
   onMonth: (key: string | null) => void;
+  /** Whether anything differs from the default view (current month, no savings). */
+  filtered: boolean;
+  /** Back to the default view. */
+  onReset: () => void;
   withSavings: boolean;
   onWithSavings: (value: boolean) => void;
 }
@@ -41,24 +45,16 @@ function monthChip(point: MonthPoint): string {
  * with the two choices: the period (what the chart and the table cover) and, inside it, the whole period or
  * one month (what the summary and the categories describe). Choices apply right away.
  */
-export function FilterFab({ ranges, range, onRange, points, scope, selectedKey, onMonth, withSavings, onWithSavings }: FilterFabProps) {
+export function FilterFab({ ranges, range, onRange, points, scope, selectedKey, onMonth, filtered, onReset, withSavings, onWithSavings }: FilterFabProps) {
   const [open, setOpen] = useState(false);
   const focused = scope === "month" && selectedKey !== null;
-  // The button lights up whenever something differs from the default view.
-  const filtered = focused || withSavings;
-  // Back to the default view: the whole period, savings left out. The period itself is not a filter, so it stays.
-  const clear = () => {
-    onMonth(null);
-    onWithSavings(false);
-  };
-
   return (
     <>
       {/* Small X on the button's top-right corner, so the filters can be dropped without opening the sheet. */}
       {filtered && (
         <button
           type="button"
-          onClick={clear}
+          onClick={onReset}
           aria-label="Limpar filtros"
           className="fixed right-5 bottom-[4.25rem] z-30 flex size-7 items-center justify-center rounded-full bg-foreground text-background shadow-md ring-2 ring-background after:absolute after:-inset-2"
         >
@@ -66,7 +62,7 @@ export function FilterFab({ ranges, range, onRange, points, scope, selectedKey, 
         </button>
       )}
 
-      {/* Light on the default view; the primary color once a month is in focus or savings are included. */}
+      {/* Light on the default view; the primary color once the month, the scope or the savings differ from it. */}
       <Button
         size="icon"
         variant={filtered ? "default" : "secondary"}
@@ -122,7 +118,7 @@ export function FilterFab({ ranges, range, onRange, points, scope, selectedKey, 
                     type="button"
                     aria-pressed={active}
                     onClick={() => onMonth(point.key)}
-                    title={point.source === "installments" ? "Só a fatura do cartão é conhecida" : point.projected ? "Previsto" : undefined}
+                    title={point.source === "installments" ? (point.committed ? "Só as parcelas já contratadas" : "Só a fatura do cartão é conhecida") : point.projected ? "Previsto" : undefined}
                     className={`${CHIP} px-2 ${active ? CHIP_ON : CHIP_OFF} ${point.projected && !active ? "border-dashed" : ""}`}
                   >
                     {monthChip(point)}

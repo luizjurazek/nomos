@@ -94,7 +94,7 @@ export function EntryFormDialog({
   const [installmentsInput, setInstallmentsInput] = useState("1");
   const installments = Math.max(1, Number(installmentsInput) || 1);
   const [pending, startTransition] = useTransition();
-  const showInstallments = config.installmentParsing && !isEdit;
+  const showInstallments = config.bulkInstallments && !isEdit;
 
   const setField = (role: ColumnRole, value: SheetCell) => setValues((prev) => ({ ...prev, [role]: value }));
 

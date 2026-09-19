@@ -21,7 +21,9 @@ const MIN_BAR_W = 14;
 /** Bars never get thicker than the mark spec allows. */
 const MAX_BAR_W = 24;
 const BAR_GAP = 2;
-const TOP = 12;
+const TOP = 24;
+/** Narrower than this, the "Projeção" label doesn't fit in its band and is left out. */
+const MIN_LABEL_W = 70;
 const AXIS_H = 38;
 const Y_AXIS_W = 56;
 
@@ -63,25 +65,24 @@ const SERIES: Series[] = [
 ];
 
 type View = "bars" | "lines" | "table";
-type Shape = "circle" | "square" | "diamond";
 
 interface LineSeries {
-  id: "entradas" | "saidas" | "poupado" | "saldo";
+  id: "entradas" | "saidas" | "cartao" | "poupado" | "saldo";
   label: string;
   color: string;
-  /** A second channel besides color, so the series stay apart for everyone. */
-  shape: Shape;
   better: Better;
   note?: (point: MonthPoint, withSavings: boolean) => string | null;
   value: (point: MonthPoint) => number | null;
 }
 
 const LINE_SERIES: LineSeries[] = [
-  { id: "entradas", label: "Entradas", color: TABLE_HEADER_COLORS.entradas, better: "up", shape: "circle", note: includesWithdrawn, value: (point) => point.entradas },
+  { id: "entradas", label: "Entradas", color: TABLE_HEADER_COLORS.entradas, better: "up", note: includesWithdrawn, value: (point) => point.entradas },
   // Only known when the month has a tab: past the last tab we just don't know the débitos.
-  { id: "saidas", label: "Saídas", color: TABLE_HEADER_COLORS.debitos, better: "down", shape: "square", note: includesSaved, value: (point) => (point.debitos === null ? null : point.debitos + point.cartao) },
-  { id: "poupado", label: "Poupado", color: SAVINGS_COLOR, better: "up", shape: "diamond", note: savedBreakdown("saídas"), value: (point) => point.poupado },
-  { id: "saldo", label: "Saldo", color: "var(--foreground)", better: "up", shape: "circle", note: balanceNote("saídas"), value: (point) => point.saldo },
+  { id: "saidas", label: "Saídas", color: TABLE_HEADER_COLORS.debitos, better: "down", note: includesSaved, value: (point) => (point.debitos === null ? null : point.debitos + point.cartao) },
+  // Already counted inside Saídas; kept as its own line to follow the card bill on its own.
+  { id: "cartao", label: "Cartão (fatura)", color: TABLE_HEADER_COLORS.nubank, better: "down", value: (point) => point.cartao },
+  { id: "poupado", label: "Poupado", color: SAVINGS_COLOR, better: "up", note: savedBreakdown("saídas"), value: (point) => point.poupado },
+  { id: "saldo", label: "Saldo", color: "var(--foreground)", better: "up", note: balanceNote("saídas"), value: (point) => point.saldo },
 ];
 
 /** Series ids that can be toggled from the legend; "saldo" is shared by both views. */
@@ -174,6 +175,8 @@ export function MonthlyChart({ points, selectedKey, onSelect, withSavings }: Mon
 
   const y = (value: number) => TOP + ((scale.hi - value) / (scale.hi - scale.lo)) * plotH;
   const baseline = y(0);
+  // Everything from the first projected month onwards is shaded as one band.
+  const projectionStart = points.findIndex((point) => point.projected);
   const width = points.length * slot + pad;
 
   // Bring the selected month into view when the period or the view changes (not on every selection, so manual scrolling isn't fought).
@@ -274,20 +277,22 @@ export function MonthlyChart({ points, selectedKey, onSelect, withSavings }: Mon
             height={height}
             className="block text-foreground"
             role="group"
-            aria-label={lines ? "Gráfico de linhas de entradas, saídas, poupado e saldo por mês" : "Gráfico mensal de entradas, débitos, cartão, poupado e saldo"}
+            aria-label={lines ? "Gráfico de linhas de entradas, saídas, cartão, poupado e saldo por mês" : "Gráfico mensal de entradas, débitos, cartão, poupado e saldo"}
           >
-            <defs>
-              {SERIES.map((series) => (
-                <pattern key={series.id} id={`hatch-${series.id}`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                  <rect width="6" height="6" fill={series.color} fillOpacity="0.22" />
-                  <line x1="0" y1="0" x2="0" y2="6" stroke={series.color} strokeWidth="2.5" />
-                </pattern>
-              ))}
-            </defs>
-
             {scale.ticks.map((tick) => (
               <line key={tick} x1={0} x2={width} y1={y(tick)} y2={y(tick)} className="stroke-border" strokeWidth={tick === 0 ? 1.5 : 1} />
             ))}
+
+            {projectionStart >= 0 && (
+              <g>
+                <rect x={projectionStart * slot} y={TOP} width={(points.length - projectionStart) * slot} height={plotH} fill="currentColor" opacity={0.06} />
+                {(points.length - projectionStart) * slot >= MIN_LABEL_W && (
+                  <text x={projectionStart * slot + 6} y={TOP - 6} className="fill-foreground-secondary text-[10px] font-medium">
+                    Projeção →
+                  </text>
+                )}
+              </g>
+            )}
 
             {points.map((point, index) => {
               const slotX = index * slot;
@@ -303,11 +308,7 @@ export function MonthlyChart({ points, selectedKey, onSelect, withSavings }: Mon
                       if (value === null || value === 0) return null;
                       const x = slotX + (slot - groupW) / 2 + seriesIndex * (barW + BAR_GAP);
                       return (
-                        <path
-                          key={series.id}
-                          d={columnPath(x, y(value), barW, baseline)}
-                          fill={point.projected ? `url(#hatch-${series.id})` : series.color}
-                        />
+                        <path key={series.id} d={columnPath(x, y(value), barW, baseline)} fill={series.color} />
                       );
                     })}
 
@@ -342,11 +343,10 @@ export function MonthlyChart({ points, selectedKey, onSelect, withSavings }: Mon
                     stroke="currentColor"
                     strokeWidth={2}
                     strokeLinecap="round"
-                    strokeDasharray={entry.point.projected ? "4 4" : undefined}
                   />
                 );
               })}
-            {!lines && saldoPoints.map(({ point, x }) => <Marker key={point.key} shape="circle" x={x} y={y(point.saldo!)} color="currentColor" hollow={point.projected} />)}
+            {!lines && saldoPoints.map(({ point, x }) => <Marker key={point.key} x={x} y={y(point.saldo!)} color="currentColor" />)}
 
             {/* Lines view: crosshair on the active month, then every series. */}
             {lines && activeIndex >= 0 && (
@@ -378,13 +378,12 @@ export function MonthlyChart({ points, selectedKey, onSelect, withSavings }: Mon
                           stroke={series.color}
                           strokeWidth={2}
                           strokeLinecap="round"
-                          strokeDasharray={dot.point.projected ? "4 4" : undefined}
                         />
                       );
                     })}
                     {dots.map((dot) =>
                       dot.value === null ? null : (
-                        <Marker key={dot.point.key} shape={series.shape} x={dot.index * slot + slot / 2} y={y(dot.value)} color={series.color} hollow={dot.point.projected} />
+                        <Marker key={dot.point.key} x={dot.index * slot + slot / 2} y={y(dot.value)} color={series.color} active={dot.index === activeIndex} />
                       ),
                     )}
                   </g>
@@ -459,12 +458,9 @@ export function MonthlyChart({ points, selectedKey, onSelect, withSavings }: Mon
   );
 }
 
-/** A point marker (>= 8px, 2px surface ring). Projected months get a hollow one. */
-function Marker({ shape, x, y, color, hollow }: { shape: Shape; x: number; y: number; color: string; hollow?: boolean }) {
-  const paint = { fill: hollow ? "var(--card)" : color, stroke: hollow ? color : "var(--card)", strokeWidth: 2 };
-  if (shape === "square") return <rect x={x - 4} y={y - 4} width={8} height={8} rx={1.5} {...paint} />;
-  if (shape === "diamond") return <polygon points={`${x},${y - 5.5} ${x + 5.5},${y} ${x},${y + 5.5} ${x - 5.5},${y}`} {...paint} />;
-  return <circle cx={x} cy={y} r={4} {...paint} />;
+/** A point marker (>= 8px, 2px surface ring); a bit larger on the active month. */
+function Marker({ x, y, color, active }: { x: number; y: number; color: string; active?: boolean }) {
+  return <circle cx={x} cy={y} r={active ? 5 : 4} fill={color} stroke="var(--card)" strokeWidth={2} />;
 }
 
 interface EndLabel {
@@ -492,19 +488,7 @@ function placeEndLabels(series: LineSeries[], points: MonthPoint[], slot: number
 }
 
 function LegendItems({ children }: { children: React.ReactNode }) {
-  return <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-foreground-secondary">{children}</ul>;
-}
-
-function ProjectedKey() {
-  return (
-    <li className="flex items-center gap-1.5">
-      <span
-        className="size-2.5 rounded-sm text-foreground-secondary"
-        style={{ backgroundImage: "repeating-linear-gradient(45deg, currentColor 0 2px, transparent 2px 5px)" }}
-      />
-      Projetado
-    </li>
-  );
+  return <ul className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-foreground-secondary">{children}</ul>;
 }
 
 interface LegendProps {
@@ -522,10 +506,12 @@ function LegendToggle({ id, label, hidden, onToggle, children }: LegendProps & {
         aria-pressed={!off}
         aria-label={`${off ? "Adicionar" : "Remover"} ${label} do gráfico`}
         onClick={() => onToggle(id)}
-        className={`flex min-h-8 items-center gap-1.5 rounded-md px-1 transition-opacity hover:text-foreground ${off ? "opacity-40" : ""}`}
+        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+          off ? "border-transparent text-foreground-secondary line-through opacity-60 hover:opacity-100" : "border-border bg-muted/50 text-foreground"
+        }`}
       >
         {children}
-        <span className={off ? "line-through" : ""}>{label}</span>
+        {label}
       </button>
     </li>
   );
@@ -545,7 +531,6 @@ function Legend({ hidden, onToggle }: LegendProps) {
           <circle cx="8" cy="5" r="3.5" fill="currentColor" stroke="var(--card)" strokeWidth="1.5" />
         </svg>
       </LegendToggle>
-      <ProjectedKey />
     </LegendItems>
   );
 }
@@ -557,16 +542,10 @@ function LinesLegend({ hidden, onToggle }: LegendProps) {
         <LegendToggle key={series.id} id={series.id} label={series.label} hidden={hidden} onToggle={onToggle}>
           <svg width="18" height="12" aria-hidden>
             <line x1="0" y1="6" x2="18" y2="6" stroke={series.color} strokeWidth="2" strokeLinecap="round" />
-            <Marker shape={series.shape} x={9} y={6} color={series.color} />
+            <Marker x={9} y={6} color={series.color} />
           </svg>
         </LegendToggle>
       ))}
-      <li className="flex items-center gap-1.5">
-        <svg width="18" height="12" aria-hidden>
-          <line x1="0" y1="6" x2="18" y2="6" stroke="currentColor" strokeWidth="2" strokeDasharray="4 3" />
-        </svg>
-        Projetado
-      </li>
     </LegendItems>
   );
 }
@@ -729,7 +708,9 @@ function Readout({ point, prev, next, compareTo, withSavings, pinned, picking, t
       </dl>
       {point.source === "installments" && (
         <p className="mt-2 text-[11px] text-foreground-secondary">
-          Mês sem aba: só a fatura do cartão é conhecida (compras do último mês e parcelas já contratadas).
+          {point.committed
+            ? `Mês sem aba: só o que já está contratado (parcelas de entradas e débitos, e a fatura do cartão). Comprometido: ${formatBRL(point.committed.saldo)}.`
+            : "Mês sem aba: só a fatura do cartão é conhecida (compras do último mês e parcelas já contratadas)."}
         </p>
       )}
     </div>

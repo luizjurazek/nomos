@@ -33,6 +33,7 @@ export function NubankTable({
       <EntryList
         rows={rows}
         filterable
+        memoryKey="nubank"
         emptyMessage="Nenhuma compra ainda."
         renderRow={(row) => (
           <EntryRow

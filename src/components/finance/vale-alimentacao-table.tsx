@@ -59,6 +59,7 @@ export function ValeAlimentacaoTable({
           <EntryList
             rows={optimisticCredito}
             filterable
+            memoryKey="vale-credito"
             emptyMessage="Nada recebido ainda."
             renderRow={(row) => (
               <EntryRow
@@ -86,6 +87,7 @@ export function ValeAlimentacaoTable({
           <EntryList
             rows={optimisticConsumo}
             filterable
+            memoryKey="vale-consumo"
             emptyMessage="Nenhum gasto ainda."
             renderRow={(row) => (
               <EntryRow

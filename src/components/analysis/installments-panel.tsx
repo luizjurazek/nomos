@@ -4,7 +4,7 @@ import { useState } from "react";
 import { TABLE_HEADER_COLORS } from "@/components/finance/table-colors";
 import { formatBRL } from "@/lib/analysis/format";
 import { formatCurrency } from "@/lib/format/currency";
-import type { FreedAmount, InstallmentPlan, PlansTotals } from "@/lib/analysis/installments";
+import type { FreedAmount, InstallmentPlan, LedgerPlan, PlansTotals } from "@/lib/analysis/installments";
 import type { MonthPoint } from "@/lib/analysis/timeline";
 import { CardBillsChart } from "./card-bills-chart";
 import { refLabel, shortRefLabel } from "./labels";
@@ -13,6 +13,8 @@ interface InstallmentsPanelProps {
   /** The next card bills, starting with the current month. */
   bills: MonthPoint[];
   plans: InstallmentPlan[];
+  /** Plans in Entradas and Débitos (a loan, a car), which are not part of the card bill. */
+  ledgerPlans: LedgerPlan[];
   freed: FreedAmount[];
   /** Part of each bill (by month key) that is installments. */
   installmentBills: Map<string, number>;
@@ -27,7 +29,7 @@ const BILLS_VIEWS: { id: BillsView; label: string }[] = [
 ];
 
 /** The card ahead: what the next bills look like, which installments are running and when the bill gets lighter. */
-export function InstallmentsPanel({ bills, plans, freed, installmentBills, totals }: InstallmentsPanelProps) {
+export function InstallmentsPanel({ bills, plans, ledgerPlans, freed, installmentBills, totals }: InstallmentsPanelProps) {
   const max = Math.max(1, ...bills.map((bill) => bill.cartao));
   const freedByKey = new Map(freed.map((item) => [item.key, item]));
   const billKeys = new Set(bills.map((bill) => bill.key));
@@ -165,6 +167,57 @@ export function InstallmentsPanel({ bills, plans, freed, installmentBills, total
                 </dl>
               </li>
             ))}
+          </ul>
+        </div>
+      )}
+
+      {ledgerPlans.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-0.5 px-1">
+            <h3 className="text-xs font-medium tracking-wide text-foreground-secondary uppercase">Parcelas de entradas e débitos</h3>
+            <p className="text-xs text-foreground-secondary">
+              Caem no próprio mês (não na fatura seguinte). Até agora já inclui a parcela deste mês. O último mês vem da conta, sem precisar de aba.
+            </p>
+          </div>
+          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+            {ledgerPlans.map((plan) => {
+              const color = plan.kind === "entrada" ? TABLE_HEADER_COLORS.entradas : TABLE_HEADER_COLORS.debitos;
+              return (
+                <li key={`${plan.kind}-${plan.name}-${plan.current}-${plan.valor}`} className="flex flex-col gap-2.5 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-medium">{plan.name}</p>
+                      <p className="text-xs text-foreground-secondary">
+                        <span className="inline-flex items-center gap-1">
+                          <span className="size-2 rounded-sm" style={{ backgroundColor: color }} />
+                          {plan.kind === "entrada" ? "Entrada" : "Débito"}
+                        </span>{" "}
+                        · {plan.current}/{plan.total} · {plan.remainingCount === 0 ? "última parcela neste mês" : `termina em ${shortRefLabel(plan.lastMonth)}`}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-semibold tabular-nums">{formatCurrency(plan.valor)}</p>
+                      <p className="text-xs text-foreground-secondary">por parcela</p>
+                    </div>
+                  </div>
+                  <div
+                    role="progressbar"
+                    aria-label={`${plan.doneCount} de ${plan.total} parcelas`}
+                    aria-valuemin={0}
+                    aria-valuemax={plan.total}
+                    aria-valuenow={plan.doneCount}
+                    className="h-1.5 rounded-full bg-muted"
+                  >
+                    <div className="h-full rounded-full" style={{ width: `${(plan.doneCount / plan.total) * 100}%`, backgroundColor: color }} />
+                  </div>
+                  <dl className="grid grid-cols-3 gap-2 text-xs">
+                    <PlanFigure label={`Até agora (${plan.doneCount}x)`} value={plan.doneAmount} />
+                    <PlanFigure label={`Falta (${plan.remainingCount}x)`} value={plan.remainingAmount} />
+                    <PlanFigure label={`Total (${plan.total}x)`} value={plan.totalAmount} />
+                  </dl>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

@@ -11,6 +11,7 @@ import { MonthSummaryDropdown } from "./month-summary-dropdown";
 import { NubankTable } from "./nubank-table";
 import { TableBadgeStrip } from "./table-badge-strip";
 import { getTab, type TableSlug } from "./table-tabs";
+import { readTab, rememberTab } from "./view-memory";
 import { UpcomingBillsCard } from "./upcoming-bills-card";
 import { VaBalanceCard } from "./va-balance-card";
 import { ValeAlimentacaoTable } from "./vale-alimentacao-table";
@@ -22,13 +23,16 @@ interface MonthHomeProps {
   month: string;
   categoriasEntradas: string[];
   categoriasSaidas: string[];
-  initialTab: TableSlug;
+  /** Set only when the URL asks for a table (?tab=); otherwise the one last used is kept across months. */
+  initialTab?: TableSlug;
 }
 
 /** Nubank-style month screen: balance cards on top, then badges that swap the list shown below. */
 export function MonthHome({ monthData, savings, year, month, categoriasEntradas, categoriasSaidas, initialTab }: MonthHomeProps) {
-  // Tab lives in local state so switching badges never re-runs the server read.
-  const [activeTab, setActiveTab] = useState<TableSlug>(initialTab);
+  // Tab lives in local state so switching badges never re-runs the server read. Changing month mounts this screen
+  // again, so the choice is also remembered (see view-memory) and picked up here.
+  const [activeTab, setActiveTab] = useState<TableSlug>(() => initialTab ?? readTab() ?? "debitos");
+  useEffect(() => rememberTab(activeTab), [activeTab]);
   const [, startTransition] = useTransition();
 
   // Reading a month is read-only; the "Cartão de crédito" row is synced here, explicitly, after the
@@ -65,7 +69,8 @@ export function MonthHome({ monthData, savings, year, month, categoriasEntradas,
       </aside>
 
       <div className="flex min-w-0 flex-col gap-3">
-      <div className="sticky top-0 z-10 -mt-1 bg-background/90 backdrop-blur">
+      {/* On phones the period switcher sticks above (3.5rem tall), so the badges stop right under it. */}
+      <div className="sticky top-14 z-10 -mt-1 bg-background/90 backdrop-blur lg:top-0">
         <TableBadgeStrip active={activeTab} onChange={setActiveTab} />
       </div>
 

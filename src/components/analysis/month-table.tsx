@@ -1,7 +1,7 @@
 "use client";
 
 import { formatBRL } from "@/lib/analysis/format";
-import type { MonthPoint } from "@/lib/analysis/timeline";
+import { committedView, type MonthPoint } from "@/lib/analysis/timeline";
 import { TABLE_HEADER_COLORS } from "@/components/finance/table-colors";
 import { SAVINGS_COLOR } from "./colors";
 
@@ -48,7 +48,9 @@ export function MonthTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {points.map((point) => {
+          {points.map((raw) => {
+            // Months past the last tab list what is already contracted, in the place of the (unknown) real values.
+            const point = committedView(raw);
             const selected = point.key === selectedKey;
             return (
               <tr
@@ -56,6 +58,7 @@ export function MonthTable({
                 onClick={() => onSelect(point.key)}
                 onPointerEnter={(event) => event.pointerType === "mouse" && onHover?.(point.key)}
                 onPointerLeave={() => onHover?.(null)}
+                title={raw.committed ? "Só o que já está contratado: parcelas e fatura do cartão" : undefined}
                 className={`cursor-pointer transition-colors hover:bg-accent/60 ${selected ? "bg-muted/60" : ""} ${point.projected ? "text-foreground-secondary" : ""}`}
               >
                 <th scope="row" className="px-3 py-2 text-left font-medium">

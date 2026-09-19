@@ -12,6 +12,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+/** Months of each year already fetched. The switcher mounts again on every month change, so without this the strip would collapse to one month while it reloads. */
+const monthsByYear = new Map<string, string[]>();
+
 interface YearMonthSwitcherProps {
   years: string[];
   activeYear: string;
@@ -21,7 +24,7 @@ interface YearMonthSwitcherProps {
 /** Period picker shown at the top of the month screen: year dropdown plus a scrollable strip of months. */
 export function YearMonthSwitcher({ years, activeYear, activeMonth }: YearMonthSwitcherProps) {
   const router = useRouter();
-  const [months, setMonths] = useState<string[]>([activeMonth]);
+  const [months, setMonths] = useState<string[]>(() => monthsByYear.get(activeYear) ?? [activeMonth]);
   const activeRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
@@ -29,6 +32,7 @@ export function YearMonthSwitcher({ years, activeYear, activeMonth }: YearMonthS
     fetch(`/api/years/${activeYear}/months`)
       .then((res) => res.json())
       .then((data: { months: string[] }) => {
+        monthsByYear.set(activeYear, data.months);
         if (!cancelled) setMonths(data.months);
       })
       .catch(() => {});
@@ -61,7 +65,8 @@ export function YearMonthSwitcher({ years, activeYear, activeMonth }: YearMonthS
   };
 
   return (
-    <div className="flex items-center gap-2">
+    // Sticks to the top of the scrolling screen on phones (3.5rem tall: the month badges below stop right under it).
+    <div className="sticky top-0 z-20 -mx-4 -mt-2 flex items-center gap-2 bg-background/90 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:static lg:m-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
       <Select value={activeYear} onValueChange={goToYear}>
         <SelectTrigger className="h-10 w-[84px] shrink-0 rounded-full" aria-label="Ano">
           <SelectValue />

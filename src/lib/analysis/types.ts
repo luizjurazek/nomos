@@ -7,12 +7,20 @@ export interface AnalysisRow {
   valor: number;
 }
 
+/** "3/20" marker read from the name; the plan keeps repeating in the months that have no tab yet. */
+export interface RowInstallment {
+  current: number;
+  total: number;
+}
+
 export interface AnalysisEntrada extends AnalysisRow {
+  installment: RowInstallment | null;
   /** Withdrawal from the emergency reserve: money moving between pockets, not income. */
   isTransfer: boolean;
 }
 
 export interface AnalysisDebito extends AnalysisRow {
+  installment: RowInstallment | null;
   /** Savings/investment: money moving between pockets, not a real expense. */
   isTransfer: boolean;
   /** The auto-synced "Cartão de crédito" line (previous month's Nubank total). */
@@ -20,7 +28,7 @@ export interface AnalysisDebito extends AnalysisRow {
 }
 
 export interface AnalysisNubank extends AnalysisRow {
-  installment: { current: number; total: number } | null;
+  installment: RowInstallment | null;
 }
 
 export interface AnalysisMonth {

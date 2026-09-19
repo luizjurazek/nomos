@@ -5,6 +5,7 @@ import type { EntradaRow } from "@/lib/sheets/types";
 import { EntryFormDialog } from "./entry-form-dialog";
 import { EntryList } from "./entry-list";
 import { EntryRow } from "./entry-row";
+import { InstallmentBadge } from "./installment-badge";
 import { TableFooterStats } from "./table-footer-stats";
 import { TABLE_HEADER_COLORS } from "./table-colors";
 import { TableSectionHeader } from "./table-section-header";
@@ -38,6 +39,7 @@ export function EntradasTable({
       <EntryList
         rows={optimisticRows}
         filterable
+        memoryKey="entradas"
         emptyMessage="Nenhum lançamento ainda."
         renderRow={(row) => (
           <EntryRow
@@ -45,7 +47,12 @@ export function EntradasTable({
             meta={row.categoria}
             valor={row.valor}
             accent={TABLE_HEADER_COLORS.entradas}
-            badges={row.isReservaWithdrawal ? <TagBadge tag="transferenciaReserva" /> : null}
+            badges={
+              <>
+                {row.isReservaWithdrawal && <TagBadge tag="transferenciaReserva" />}
+                {row.installment && <InstallmentBadge installment={row.installment} />}
+              </>
+            }
             checked={row.recebido}
             checkedLabel="Recebido"
             uncheckedLabel="A receber"

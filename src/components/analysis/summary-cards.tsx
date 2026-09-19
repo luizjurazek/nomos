@@ -1,5 +1,5 @@
 import { formatBRL, formatPercent } from "@/lib/analysis/format";
-import { viewPoint, type MonthPoint, type PeriodSummary } from "@/lib/analysis/timeline";
+import { committedView, viewPoint, type MonthPoint, type PeriodSummary } from "@/lib/analysis/timeline";
 import { TABLE_HEADER_COLORS } from "@/components/finance/table-colors";
 import { SAVINGS_COLOR } from "./colors";
 import { shortRefLabel } from "./labels";
@@ -52,12 +52,13 @@ function periodTiles(summary: PeriodSummary): Tile[] {
 
 /** `raw` is the month as the sheet has it; what is shown follows the page-wide savings switch (see `viewPoint`). */
 function monthTiles(raw: MonthPoint, withSavings: boolean): Tile[] {
-  const point = viewPoint(raw, withSavings);
+  const committed = raw.committed !== null;
+  const point = viewPoint(committedView(raw), withSavings);
   const saidas = point.debitos === null ? null : point.debitos + point.cartao;
   const realIncome = (raw.entradas ?? 0) - (raw.retiradas ?? 0);
-  const state = point.projected ? "previsto" : "do mês";
+  const state = committed ? "só parcelas" : point.projected ? "previsto" : "do mês";
   return [
-    { label: "Saldo do mês", value: money(point.saldo), hint: `${shortRefLabel(point)} · ${state}` },
+    { label: committed ? "Comprometido" : "Saldo do mês", value: money(point.saldo), hint: `${shortRefLabel(point)} · ${state}` },
     { label: "Entradas", value: money(point.entradas), hint: state, dot: TABLE_HEADER_COLORS.entradas },
     {
       label: "Saídas",

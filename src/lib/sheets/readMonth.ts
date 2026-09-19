@@ -34,12 +34,14 @@ export async function readMonth(spreadsheetId: string, year: string, monthTitle:
   const entradas: EntradaRow[] = located.entradas
     ? extractRawRows(raw, located.entradas, TABLE_CONFIGS.entradas.columnOrder).map((row) => {
         const categoria = text(row.values.category);
+        const name = text(row.values.name);
         return {
           rowIndex: row.rowIndex,
           date: text(row.values.date),
-          name: text(row.values.name),
+          name,
           categoria,
           valor: toNumber(row.values.valor),
+          installment: parseInstallment(name),
           recebido: bool(row.values.checkbox),
           isReservaWithdrawal: TABLE_CONFIGS.entradas.semanticTags.some(
             (tag) => tag.category === categoria,
@@ -51,11 +53,13 @@ export async function readMonth(spreadsheetId: string, year: string, monthTitle:
   const debitos: DebitoRow[] = located.debitos
     ? extractRawRows(raw, located.debitos, TABLE_CONFIGS.debitos.columnOrder).map((row) => {
         const categoria = text(row.values.category);
+        const name = text(row.values.name);
         return {
           rowIndex: row.rowIndex,
           date: text(row.values.date),
-          name: text(row.values.name),
+          name,
           categoria,
+          installment: parseInstallment(name),
           quem: text(row.values.quem),
           valor: toNumber(row.values.valor),
           pago: bool(row.values.checkbox),

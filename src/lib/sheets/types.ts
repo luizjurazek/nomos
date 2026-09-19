@@ -41,12 +41,14 @@ export interface RowBase {
 
 export interface EntradaRow extends RowBase {
   categoria: string;
+  installment: { current: number; total: number } | null;
   recebido: boolean;
   isReservaWithdrawal: boolean;
 }
 
 export interface DebitoRow extends RowBase {
   categoria: string;
+  installment: { current: number; total: number } | null;
   quem: Quem | string;
   pago: boolean;
   isPoupanca: boolean;

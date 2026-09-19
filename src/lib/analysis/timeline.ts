@@ -22,6 +22,26 @@ export interface MonthPoint {
   /** Future month (planned values) or a month past the last tab (installments only). */
   projected: boolean;
   source: "sheet" | "installments";
+  /** Only on `installments` points, and only when the last tab has Entradas/Débitos installments. */
+  committed: Committed | null;
+}
+
+/** The contracted amounts standing in for entradas/débitos/saldo, for the places that list a month as a row. */
+export function committedView(point: MonthPoint): MonthPoint {
+  if (!point.committed || point.entradas !== null) return point;
+  return { ...point, entradas: point.committed.entradas, debitos: point.committed.debitos, saldo: point.committed.saldo };
+}
+
+/**
+ * What is already contracted in a month past the last tab: the installments of Entradas and Débitos
+ * (they land in the month itself) plus the card bill. It is not a real balance, there is no salary or
+ * day to day spending in it.
+ */
+export interface Committed {
+  entradas: number;
+  debitos: number;
+  /** Entradas − Débitos − Cartão of the contracted amounts only. */
+  saldo: number;
 }
 
 /**
@@ -54,9 +74,9 @@ function cardBillFor(byKey: Map<string, AnalysisMonth>, month: AnalysisMonth): n
 }
 
 /**
- * One point per month tab (real, previsto values), followed by card-bill-only points for the months
- * after the last tab: the last tab's Nubank total is next month's bill, and every installment that
- * still has charges left keeps repeating its value until it ends.
+ * One point per month tab (real, previsto values), followed by points for the months after the last tab
+ * that only carry what is already contracted: the last tab's Nubank total is next month's bill, and every
+ * installment (card, Entradas, Débitos) that still has charges left keeps repeating its value until it ends.
  */
 export function buildTimeline(months: AnalysisMonth[], now: Now): MonthPoint[] {
   const sorted = sortMonths(months);
@@ -82,14 +102,36 @@ export function buildTimeline(months: AnalysisMonth[], now: Now): MonthPoint[] {
       poupado: aportes - retiradas,
       projected: isAfterNow(month, now),
       source: "sheet",
+      committed: null,
     };
   });
 
   const last = sorted[sorted.length - 1];
-  const withCharges = last.nubank.filter((row) => row.installment && row.installment.current < row.installment.total);
-  const longestPlan = Math.max(0, ...withCharges.map((row) => row.installment!.total - row.installment!.current));
+  const stillRunning = <Row extends { installment: { current: number; total: number } | null }>(rows: Row[]) =>
+    rows.filter((row) => row.installment && row.installment.current < row.installment.total);
+  const remaining = (row: { installment: { current: number; total: number } | null }) => row.installment!.total - row.installment!.current;
 
-  const pushBill = (ref: MonthRef, cartao: number) =>
+  const cardPlans = stillRunning(last.nubank);
+  const entradaPlans = stillRunning(last.entradas);
+  const debitoPlans = stillRunning(last.debitos.filter((row) => !row.isCardRollover));
+  const hasLedgerPlans = entradaPlans.length + debitoPlans.length > 0;
+
+  // The card bill lands the month after its purchases (offset 1 is the whole last Nubank table, then only
+  // the installments left); entradas/débitos land in the month itself, so offset n keeps the plans with n charges left.
+  const cardPoints = 1 + Math.min(Math.max(0, ...cardPlans.map(remaining)), PROJECTION_HORIZON - 1);
+  const ledgerPoints = Math.min(Math.max(0, ...entradaPlans.map(remaining), ...debitoPlans.map(remaining)), PROJECTION_HORIZON);
+
+  let ref: MonthRef = last;
+  for (let index = 0; index < Math.max(cardPoints, ledgerPoints); index++) {
+    ref = nextRef(ref);
+    const offset = index + 1;
+    const cartao = index >= cardPoints ? 0 : index === 0 ? sumValues(last.nubank) : sumValues(cardPlans.filter((row) => remaining(row) >= index));
+    let committed: Committed | null = null;
+    if (hasLedgerPlans) {
+      const entradas = sumValues(entradaPlans.filter((row) => remaining(row) >= offset));
+      const debitos = sumValues(debitoPlans.filter((row) => remaining(row) >= offset));
+      committed = { entradas, debitos, saldo: entradas - debitos - cartao };
+    }
     points.push({
       key: monthKey(ref),
       year: ref.year,
@@ -103,14 +145,8 @@ export function buildTimeline(months: AnalysisMonth[], now: Now): MonthPoint[] {
       poupado: null,
       projected: true,
       source: "installments",
+      committed,
     });
-
-  let ref = nextRef(last);
-  pushBill(ref, sumValues(last.nubank));
-  for (let k = 1; k <= Math.min(longestPlan, PROJECTION_HORIZON - 1); k++) {
-    ref = nextRef(ref);
-    const stillCharging = withCharges.filter((row) => row.installment!.total - row.installment!.current >= k);
-    pushBill(ref, sumValues(stillCharging));
   }
 
   return points;
@@ -144,7 +180,7 @@ export interface PeriodSummary {
 
 /** Totals over the months that have full data (sheet months); card-only projections are left out. */
 export function summarizePeriod(points: MonthPoint[], withSavings = true): PeriodSummary {
-  const full = points.filter((point) => point.saldo !== null);
+  const full = points.filter((point) => point.source === "sheet");
   const count = full.length;
   const totalEntradas = full.reduce((acc, point) => acc + (point.entradas ?? 0), 0);
   const totalSaidas = full.reduce((acc, point) => acc + (point.debitos ?? 0) + point.cartao, 0);

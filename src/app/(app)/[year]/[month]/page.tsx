@@ -41,7 +41,7 @@ export default async function MonthPage({
       month={month}
       categoriasEntradas={categories.entradas}
       categoriasSaidas={categories.saidas}
-      initialTab={tab && isTableSlug(tab) ? tab : "debitos"}
+      initialTab={tab && isTableSlug(tab) ? tab : undefined}
     />
   );
 }

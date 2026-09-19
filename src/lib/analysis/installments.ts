@@ -1,6 +1,6 @@
 import { addMonths, compareRefs, monthKey, nextRef, type MonthRef } from "./months";
 import type { MonthPoint } from "./timeline";
-import type { AnalysisMonth } from "./types";
+import type { AnalysisMonth, RowInstallment } from "./types";
 
 export interface InstallmentPlan {
   /** Name without the "3/8" marker. */
@@ -124,12 +124,14 @@ export function withTrailingDrops(bills: MonthPoint[], freed: FreedAmount[]): Mo
   for (const drop of freed) {
     const last = result.at(-1);
     if (!last || last.source !== "installments" || drop.key !== monthKey(nextRef(last))) continue;
+    const cartao = Math.max(0, last.cartao - drop.amount);
     result.push({
       ...last,
       key: drop.key,
       year: drop.ref.year,
       month: drop.ref.month,
-      cartao: Math.max(0, last.cartao - drop.amount),
+      cartao,
+      committed: last.committed && { ...last.committed, saldo: last.committed.entradas - last.committed.debitos - cartao },
     });
   }
   return result;
@@ -146,4 +148,56 @@ export function upcomingBills(timeline: MonthPoint[], currentKey: string, freed:
   const lastDropIndex = lastDropKey ? upcoming.findIndex((point) => point.key === lastDropKey) : -1;
   const count = !lastDropKey ? minBills : lastDropIndex >= 0 ? Math.max(minBills, lastDropIndex + 1) : upcoming.length;
   return withTrailingDrops(upcoming.slice(0, count), freed);
+}
+
+export type LedgerKind = "entrada" | "debito";
+
+/** An installment plan in the month's own Entradas or Débitos (a loan received, a car being paid off). */
+export interface LedgerPlan {
+  kind: LedgerKind;
+  /** Name without the "3/20" marker. */
+  name: string;
+  valor: number;
+  current: number;
+  total: number;
+  /** Installments up to and including this month's. */
+  doneCount: number;
+  /** Installments still to come after this month's. */
+  remainingCount: number;
+  doneAmount: number;
+  remainingAmount: number;
+  totalAmount: number;
+  /** Month of the last installment. Plain arithmetic, so it does not need a tab to exist. */
+  lastMonth: MonthRef;
+}
+
+/**
+ * Installment plans running in `month`'s Entradas and Débitos. Unlike the card these land in the month
+ * itself: "47/58" in Setembro is followed by "48/58" in Outubro and ends in Setembro + 11 months.
+ */
+export function listLedgerPlans(month: AnalysisMonth): LedgerPlan[] {
+  const toPlan = (kind: LedgerKind, row: { name: string; valor: number; installment: RowInstallment | null }): LedgerPlan[] => {
+    if (!row.installment || row.installment.current > row.installment.total) return [];
+    const { current, total } = row.installment;
+    return [
+      {
+        kind,
+        name: baseName(row.name),
+        valor: row.valor,
+        current,
+        total,
+        doneCount: current,
+        remainingCount: total - current,
+        doneAmount: row.valor * current,
+        remainingAmount: row.valor * (total - current),
+        totalAmount: row.valor * total,
+        lastMonth: addMonths(month, total - current),
+      },
+    ];
+  };
+  const plans = [
+    ...month.entradas.flatMap((row) => toPlan("entrada", row)),
+    ...month.debitos.filter((row) => !row.isCardRollover).flatMap((row) => toPlan("debito", row)),
+  ];
+  return plans.sort((a, b) => compareRefs(a.lastMonth, b.lastMonth) || a.name.localeCompare(b.name));
 }

@@ -18,11 +18,13 @@ export function parseMonth(year: string, month: string, formatted: SheetGrid, ra
   const entradas: AnalysisEntrada[] = located.entradas
     ? extractRawRows(raw, located.entradas, TABLE_CONFIGS.entradas.columnOrder).map((row) => {
         const categoria = text(row.values.category);
+        const name = text(row.values.name);
         return {
           date: text(row.values.date),
-          name: text(row.values.name),
+          name,
           categoria,
           valor: toNumber(row.values.valor),
+          installment: parseInstallment(name),
           isTransfer: TABLE_CONFIGS.entradas.semanticTags.some((tag) => tag.category === categoria),
         };
       })
@@ -31,11 +33,13 @@ export function parseMonth(year: string, month: string, formatted: SheetGrid, ra
   const debitos: AnalysisDebito[] = located.debitos
     ? extractRawRows(raw, located.debitos, TABLE_CONFIGS.debitos.columnOrder).map((row) => {
         const categoria = text(row.values.category);
+        const name = text(row.values.name);
         return {
           date: text(row.values.date),
-          name: text(row.values.name),
+          name,
           categoria,
           valor: toNumber(row.values.valor),
+          installment: parseInstallment(name),
           isTransfer: TABLE_CONFIGS.debitos.semanticTags.some((tag) => tag.category === categoria),
           isCardRollover: categoria === CARD_ROLLOVER_CATEGORY,
         };

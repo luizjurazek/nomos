@@ -12,10 +12,25 @@ import { DeltaText } from "./delta-text";
 import { useContainerWidth } from "./use-container-width";
 
 const MIN_SLOT = 56;
-const TOP = 16;
+const TOP = 24;
 const AXIS_H = 38;
 const Y_AXIS_W = 56;
-const COLOR = TABLE_HEADER_COLORS.nubank;
+const MIN_LABEL_W = 70;
+
+interface Series {
+  id: "total" | "installments" | "others";
+  label: string;
+  color: string;
+  value: (bill: Bill) => number;
+  width: number;
+}
+
+// Each series is a line at its own value, so nothing has to be read as a stack.
+const SERIES: Series[] = [
+  { id: "total", label: "Fatura", color: TABLE_HEADER_COLORS.nubank, value: (bill) => bill.total, width: 2.5 },
+  { id: "installments", label: "Parcelas", color: "var(--warning)", value: (bill) => bill.installments, width: 2 },
+  { id: "others", label: "Demais compras", color: "var(--primary)", value: (bill) => bill.others, width: 2 },
+];
 
 interface CardBillsChartProps {
   /** The upcoming bills, in order. */
@@ -32,11 +47,22 @@ interface Bill {
   others: number;
 }
 
-/** Time series of the next card bills: the total as a line, with the part that is installments filled underneath. */
+/** Time series of the next card bills: total, installments and other purchases, each as its own line. */
 export function CardBillsChart({ bills, installmentBills, freed }: CardBillsChartProps) {
   const [scrollRef, containerWidth] = useContainerWidth<HTMLDivElement>();
   const [pickedKey, setPickedKey] = useState<string | null>(null);
   const [hoverKey, setHoverKey] = useState<string | null>(null);
+  const [hidden, setHidden] = useState<ReadonlySet<Series["id"]>>(new Set());
+
+  const visible = SERIES.filter((series) => !hidden.has(series.id));
+  const toggle = (id: Series["id"]) =>
+    setHidden((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      // Always keep at least one line on screen.
+      else if (visible.length > 1) next.add(id);
+      return next;
+    });
 
   const items: Bill[] = bills.map((point) => {
     const installments = Math.min(point.cartao, installmentBills.get(point.key) ?? 0);
@@ -44,15 +70,18 @@ export function CardBillsChart({ bills, installmentBills, freed }: CardBillsChar
   });
   const freedByKey = new Map(freed.map((item) => [item.key, item]));
 
+  // Everything from the first projected bill onwards is shaded as one band.
+  const projectionStart = items.findIndex((item) => item.point.projected);
+
   // Slots stretch to fill the container; below the minimum the chart scrolls horizontally instead.
   const slot = Math.max(MIN_SLOT, containerWidth / Math.max(items.length, 1));
   const plotH = containerWidth >= 640 ? 220 : 180;
   const height = TOP + plotH + AXIS_H;
   const width = items.length * slot;
 
-  const scale = niceScale(0, Math.max(0, ...items.map((item) => item.total)));
+  // The scale follows the visible lines, so a filtered view doesn't stay squashed at the bottom.
+  const scale = niceScale(0, Math.max(0, ...items.flatMap((item) => visible.map((series) => series.value(item)))));
   const y = (value: number) => TOP + ((scale.hi - value) / (scale.hi - scale.lo)) * plotH;
-  const baseline = y(0);
   const x = (index: number) => index * slot + slot / 2;
 
   const activeKey = hoverKey ?? pickedKey ?? items[0]?.point.key;
@@ -60,34 +89,35 @@ export function CardBillsChart({ bills, installmentBills, freed }: CardBillsChar
   const active = items[activeIndex];
   if (!active) return null;
 
-  const areaPath = (value: (item: Bill) => number) =>
-    `M${x(0)},${baseline} ${items.map((item, index) => `L${x(index)},${y(value(item))}`).join(" ")} L${x(items.length - 1)},${baseline} Z`;
-
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
-      <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-foreground-secondary">
-        <li className="flex items-center gap-1.5">
-          <svg width="18" height="12" aria-hidden>
-            <line x1="0" y1="6" x2="18" y2="6" stroke={COLOR} strokeWidth="2" strokeLinecap="round" />
-            <circle cx="9" cy="6" r="4" fill={COLOR} stroke="var(--card)" strokeWidth="2" />
-          </svg>
-          Fatura
-        </li>
-        <li className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-sm" style={{ backgroundColor: COLOR, opacity: 0.45 }} />
-          Parcelas
-        </li>
-        <li className="flex items-center gap-1.5">
-          <svg width="18" height="12" aria-hidden>
-            <line x1="0" y1="6" x2="18" y2="6" stroke="currentColor" strokeWidth="2" strokeDasharray="4 3" />
-          </svg>
-          Projetado
-        </li>
+      <ul className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-foreground-secondary">
+        {SERIES.map((series) => {
+          const shown = !hidden.has(series.id);
+          return (
+            <li key={series.id}>
+              <button
+                type="button"
+                aria-pressed={shown}
+                onClick={() => toggle(series.id)}
+                className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  shown ? "border-border bg-muted/50 text-foreground" : "border-transparent text-foreground-secondary line-through opacity-60 hover:opacity-100"
+                }`}
+              >
+                <svg width="18" height="12" aria-hidden>
+                  <line x1="0" y1="6" x2="18" y2="6" stroke={series.color} strokeWidth="2" strokeLinecap="round" />
+                  <circle cx="9" cy="6" r="4" fill={series.color} stroke="var(--card)" strokeWidth="2" />
+                </svg>
+                {series.label}
+              </button>
+            </li>
+          );
+        })}
         <li className="flex items-center gap-1.5">
           <svg width="10" height="10" aria-hidden>
             <polygon points="0,1 10,1 5,9" className="fill-success" />
           </svg>
-          Fatura cai
+          Parcelas acabam
         </li>
       </ul>
 
@@ -101,43 +131,58 @@ export function CardBillsChart({ bills, installmentBills, freed }: CardBillsChar
         </svg>
 
         <div ref={scrollRef} className="min-w-0 flex-1 overflow-x-auto">
-          <svg width={width} height={height} className="block text-foreground" role="group" aria-label="Fatura do cartão por mês, com a parte em parcelas">
+          <svg width={width} height={height} className="block text-foreground" role="group" aria-label="Fatura do cartão por mês, com parcelas e demais compras">
             {scale.ticks.map((tick) => (
               <line key={tick} x1={0} x2={width} y1={y(tick)} y2={y(tick)} className="stroke-border" strokeWidth={tick === 0 ? 1.5 : 1} />
             ))}
 
-            <path d={areaPath((item) => item.total)} fill={COLOR} fillOpacity={0.14} />
-            <path d={areaPath((item) => item.installments)} fill={COLOR} fillOpacity={0.35} />
+            {projectionStart >= 0 && (
+              <g>
+                <rect x={projectionStart * slot} y={TOP} width={(items.length - projectionStart) * slot} height={plotH} fill="currentColor" opacity={0.06} />
+                {(items.length - projectionStart) * slot >= MIN_LABEL_W && (
+                  <text x={projectionStart * slot + 6} y={TOP - 6} className="fill-foreground-secondary text-[10px] font-medium">
+                    Projeção →
+                  </text>
+                )}
+              </g>
+            )}
 
             <line x1={x(activeIndex)} x2={x(activeIndex)} y1={TOP} y2={TOP + plotH} stroke="currentColor" strokeWidth={1} opacity={0.25} />
 
-            {items.slice(1).map((item, index) => (
-              <line
-                key={item.point.key}
-                x1={x(index)}
-                y1={y(items[index].total)}
-                x2={x(index + 1)}
-                y2={y(item.total)}
-                stroke={COLOR}
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeDasharray={item.point.projected ? "4 4" : undefined}
-              />
-            ))}
-            {items.map((item, index) => (
-              <circle
-                key={item.point.key}
-                cx={x(index)}
-                cy={y(item.total)}
-                r={index === activeIndex ? 5 : 4}
-                fill={item.point.projected ? "var(--card)" : COLOR}
-                stroke={item.point.projected ? COLOR : "var(--card)"}
-                strokeWidth={2}
-              />
+            {visible.map((series) => (
+              <g key={series.id}>
+                {items.slice(1).map((item, index) => (
+                  <line
+                    key={item.point.key}
+                    x1={x(index)}
+                    y1={y(series.value(items[index]))}
+                    x2={x(index + 1)}
+                    y2={y(series.value(item))}
+                    stroke={series.color}
+                    strokeWidth={series.width}
+                    strokeLinecap="round"
+                  />
+                ))}
+                {items.map((item, index) => (
+                  <circle
+                    key={item.point.key}
+                    cx={x(index)}
+                    cy={y(series.value(item))}
+                    r={index === activeIndex ? 5 : 4}
+                    fill={series.color}
+                    stroke="var(--card)"
+                    strokeWidth={2}
+                  />
+                ))}
+              </g>
             ))}
             {items.map((item, index) =>
-              freedByKey.has(item.point.key) ? (
-                <polygon key={item.point.key} points={`${x(index) - 5},${y(item.total) - 16} ${x(index) + 5},${y(item.total) - 16} ${x(index)},${y(item.total) - 8}`} className="fill-success" />
+              freedByKey.has(item.point.key) && !hidden.has("installments") ? (
+                <polygon
+                  key={item.point.key}
+                  points={`${x(index) - 5},${y(item.installments) - 16} ${x(index) + 5},${y(item.installments) - 16} ${x(index)},${y(item.installments) - 8}`}
+                  className="fill-success"
+                />
               ) : null,
             )}
 
@@ -184,24 +229,19 @@ export function CardBillsChart({ bills, installmentBills, freed }: CardBillsChar
         </div>
       </div>
 
-      <Readout item={active} prev={items[activeIndex - 1] ?? null} next={items[activeIndex + 1] ?? null} drop={freedByKey.get(active.point.key)} />
+      <Readout hidden={hidden} item={active} prev={items[activeIndex - 1] ?? null} next={items[activeIndex + 1] ?? null} drop={freedByKey.get(active.point.key)} />
     </div>
   );
 }
 
-function Readout({ item, prev, next, drop }: { item: Bill; prev: Bill | null; next: Bill | null; drop: FreedAmount | undefined }) {
-  const figures: { label: string; value: (bill: Bill) => number; strong?: boolean }[] = [
-    { label: "Fatura", value: (bill) => bill.total, strong: true },
-    { label: "Parcelas", value: (bill) => bill.installments },
-    { label: "Demais compras", value: (bill) => bill.others },
-  ];
+function Readout({ hidden, item, prev, next, drop }: { hidden: ReadonlySet<Series["id"]>; item: Bill; prev: Bill | null; next: Bill | null; drop: FreedAmount | undefined }) {
   const neighbours = [prev, next].filter((bill): bill is Bill => bill !== null);
 
   return (
     <div className="rounded-xl bg-muted/50 px-3 py-2.5">
       <p className="mb-1.5 text-xs font-medium text-foreground-secondary">
         {item.point.month} {item.point.year}
-        {item.point.source === "installments" && " · só parcelas já contratadas"}
+        {item.point.source === "installments" ? " · só parcelas já contratadas" : item.point.projected ? " · planejado na planilha" : ""}
       </p>
       {neighbours.length > 0 && (
         <p className="mb-2 text-[11px] text-foreground-secondary">
@@ -209,12 +249,15 @@ function Readout({ item, prev, next, drop }: { item: Bill; prev: Bill | null; ne
         </p>
       )}
       <dl className="grid grid-cols-3 gap-x-4 gap-y-2">
-        {figures.map((figure) => {
+        {SERIES.map((figure) => {
           const value = figure.value(item);
           return (
-            <div key={figure.label} className="min-w-0">
-              <dt className="break-words text-[11px] text-foreground-secondary">{figure.label}</dt>
-              <dd className={`text-sm tabular-nums ${figure.strong ? "font-semibold" : "font-medium"}`}>{formatBRL(value)}</dd>
+            <div key={figure.label} className={`min-w-0 ${hidden.has(figure.id) ? "opacity-40" : ""}`}>
+              <dt className="flex items-center gap-1.5 break-words text-[11px] text-foreground-secondary">
+                <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: figure.color }} />
+                {figure.label}
+              </dt>
+              <dd className={`text-sm tabular-nums ${figure.id === "total" ? "font-semibold" : "font-medium"}`}>{formatBRL(value)}</dd>
               {neighbours.map((other) => (
                 <dd key={other.point.key} className="flex flex-col text-[11px] tabular-nums text-foreground-secondary sm:flex-row sm:justify-between sm:gap-2">
                   <span>vs {shortMonth(other.point.month)}</span>
