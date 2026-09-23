@@ -53,13 +53,13 @@ export function MonthSummaryDropdown({ kpis, savings }: { kpis: MonthKpis; savin
     },
     {
       title: "Poupado",
-      note: "Já descontadas as retiradas da reserva",
+      note: savings.isProjection ? "Projeção: valores planejados" : "Já descontadas as retiradas da reserva",
       rows: [
         { label: "No mês", value: savings.month, color: SAVINGS_COLOR },
         // Null when the history of earlier months couldn't be read: better no total than a wrong one.
         ...(savings.total === null
           ? []
-          : [{ label: `Total até ${shortRefLabel(savings.through)}`, value: savings.total, color: SAVINGS_COLOR, emphasis: true }]),
+          : [{ label: `${savings.isProjection ? "Total projetado até" : "Total até"} ${shortRefLabel(savings.through)}`, value: savings.total, color: SAVINGS_COLOR, emphasis: true }]),
       ],
     },
     {

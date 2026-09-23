@@ -483,16 +483,17 @@ describe("summarizeSavings", () => {
     expect(summarizeSavings(history, at("Setembro"), NOW, 111).total).toBe(300 + 300 + 200 + 111);
   });
 
-  it("never counts months after the current one, and takes the current month from the history", () => {
+  it("projects the total through a future viewed month and flags it", () => {
     const summary = summarizeSavings(history, at("Outubro"), NOW, 500);
     expect(summary.month).toBe(500);
-    expect(summary.through).toEqual(at("Setembro"));
-    expect(summary.total).toBe(300 + 300 + 200 + 999);
+    expect(summary.through).toEqual(at("Outubro"));
+    expect(summary.isProjection).toBe(true);
+    expect(summary.total).toBe(300 + 300 + 200 + 999 + 500);
   });
 
   it("has no total when the history could not be read", () => {
     const summary = summarizeSavings(null, at("Setembro"), NOW, 42);
-    expect(summary).toEqual({ month: 42, total: null, through: at("Setembro") });
+    expect(summary).toEqual({ month: 42, total: null, through: at("Setembro"), isProjection: false });
   });
 });
 
