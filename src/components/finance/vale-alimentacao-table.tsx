@@ -1,14 +1,14 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { ValeAlimentacaoConsumoRow, ValeAlimentacaoCreditoRow } from "@/lib/sheets/types";
 import { EntryFormDialog } from "./entry-form-dialog";
 import { EntryList } from "./entry-list";
 import { EntryRow } from "./entry-row";
 import { TABLE_HEADER_COLORS } from "./table-colors";
-import { TableFooterStats } from "./table-footer-stats";
+import { checkedStats } from "./table-footer-stats";
 import { TableSectionHeader } from "./table-section-header";
 import { useOptimisticChecked, useRowActions } from "./use-row-actions";
 
@@ -30,12 +30,6 @@ export function ValeAlimentacaoTable({
   const [optimisticConsumo, applyConsumoToggle] = useOptimisticChecked(consumo, "pago");
   const creditoActions = useRowActions("valeAlimentacaoCredito", year, month, applyCreditoToggle);
   const consumoActions = useRowActions("valeAlimentacaoConsumo", year, month, applyConsumoToggle);
-
-  const totals = useMemo(() => {
-    const recebido = optimisticCredito.reduce((acc, row) => acc + row.valor, 0);
-    const gasto = optimisticConsumo.filter((row) => row.pago).reduce((acc, row) => acc + row.valor, 0);
-    return { recebido, gasto, saldo: recebido - gasto };
-  }, [optimisticCredito, optimisticConsumo]);
 
   return (
     <section className="flex flex-col gap-3">
@@ -60,6 +54,7 @@ export function ValeAlimentacaoTable({
             rows={optimisticCredito}
             filterable
             memoryKey="vale-credito"
+            stats={(list) => checkedStats(list, (row) => row.recebido, { done: "Recebido", pending: "A receber" })}
             emptyMessage="Nada recebido ainda."
             renderRow={(row) => (
               <EntryRow
@@ -88,6 +83,7 @@ export function ValeAlimentacaoTable({
             rows={optimisticConsumo}
             filterable
             memoryKey="vale-consumo"
+            stats={(list) => checkedStats(list, (row) => row.pago, { done: "Gasto", pending: "A pagar" })}
             emptyMessage="Nenhum gasto ainda."
             renderRow={(row) => (
               <EntryRow
@@ -107,13 +103,6 @@ export function ValeAlimentacaoTable({
           />
         </div>
       </div>
-      <TableFooterStats
-        stats={[
-          { label: "Recebido", value: totals.recebido },
-          { label: "Gasto", value: totals.gasto },
-          { label: "Saldo", value: totals.saldo, emphasis: true },
-        ]}
-      />
 
       {creatingCredito && (
         <EntryFormDialog

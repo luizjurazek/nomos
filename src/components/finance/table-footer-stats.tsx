@@ -1,12 +1,27 @@
 import { formatCurrency } from "@/lib/format/currency";
 
-interface Stat {
+export interface Stat {
   label: string;
   value: number;
   emphasis?: boolean;
 }
 
-/** Mirrors the "Total recebido / Total previsto" style footer rows each table had in the original sheet. */
+/** Done / pending / total breakdown of a list whose rows carry a checked flag (recebido, pago). */
+export function checkedStats<T extends { valor: number }>(
+  rows: T[],
+  isChecked: (row: T) => boolean,
+  labels: { done: string; pending: string },
+): Stat[] {
+  const total = rows.reduce((acc, row) => acc + row.valor, 0);
+  const done = rows.filter(isChecked).reduce((acc, row) => acc + row.valor, 0);
+  return [
+    { label: labels.done, value: done },
+    { label: labels.pending, value: total - done },
+    { label: "Total previsto", value: total, emphasis: true },
+  ];
+}
+
+/** Totals strip shown on top of a list; EntryList feeds it the rows left after filtering. */
 export function TableFooterStats({ stats }: { stats: Stat[] }) {
   return (
     <div

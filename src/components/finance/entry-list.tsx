@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/format/currency";
 import { UNKNOWN_DAY_KEY, dayLabel, daysFromToday, groupRowsByDay } from "@/lib/format/dayGroups";
+import { TableFooterStats, type Stat } from "./table-footer-stats";
 import { useToday } from "./use-today";
 import { readFilters, rememberFilters, type ListFilters } from "./view-memory";
 
@@ -26,6 +27,8 @@ interface EntryListProps<T extends ListRow> {
   filterable?: boolean;
   /** Identifies the list so its filters survive a change of month (they are remembered per list). */
   memoryKey?: string;
+  /** Totals strip on top of the list, computed from the rows that pass the current filters. */
+  stats?: (rows: T[]) => Stat[];
 }
 
 /** Lowercase and strip accents so "cafe" finds "Café". */
@@ -80,7 +83,7 @@ function FilterSelect({
 }
 
 /** A list of rows grouped by day (Hoje, Ontem, 12 de setembro...), optionally filtered by text and category. */
-export function EntryList<T extends ListRow>({ rows, renderRow, emptyMessage, filterable = false, memoryKey }: EntryListProps<T>) {
+export function EntryList<T extends ListRow>({ rows, renderRow, emptyMessage, filterable = false, memoryKey, stats }: EntryListProps<T>) {
   const today = useToday();
   const [filters, setFilters] = useState<ListFilters>(() => readFilters(memoryKey));
   useEffect(() => {
@@ -119,6 +122,7 @@ export function EntryList<T extends ListRow>({ rows, renderRow, emptyMessage, fi
 
   return (
     <div className="flex flex-col gap-3">
+      {stats && <TableFooterStats stats={stats(filtered)} />}
       {filterable && rows.length > 0 && (
         <div className="flex flex-col gap-2">
           <div className="relative">

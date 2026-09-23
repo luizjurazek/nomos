@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { DebitoRow } from "@/lib/sheets/types";
 import { EntryFormDialog } from "./entry-form-dialog";
 import { EntryList } from "./entry-list";
 import { EntryRow } from "./entry-row";
 import { InstallmentBadge } from "./installment-badge";
-import { TableFooterStats } from "./table-footer-stats";
+import { checkedStats } from "./table-footer-stats";
 import { TABLE_HEADER_COLORS } from "./table-colors";
 import { TableSectionHeader } from "./table-section-header";
 import { TagBadge } from "./tag-badge";
@@ -28,12 +28,6 @@ export function DebitosTable({
   const [optimisticRows, applyOptimisticToggle] = useOptimisticChecked(rows, "pago");
   const { toggle, remove, pending } = useRowActions("debitos", year, month, applyOptimisticToggle);
 
-  const totals = useMemo(() => {
-    const total = optimisticRows.reduce((acc, row) => acc + row.valor, 0);
-    const pago = optimisticRows.filter((row) => row.pago).reduce((acc, row) => acc + row.valor, 0);
-    return { pago, aPagar: total - pago, total };
-  }, [optimisticRows]);
-
   return (
     <section className="flex flex-col gap-3">
       <TableSectionHeader title="Débitos" count={rows.length} />
@@ -41,6 +35,7 @@ export function DebitosTable({
         rows={optimisticRows}
         filterable
         memoryKey="debitos"
+        stats={(list) => checkedStats(list, (row) => row.pago, { done: "Pago", pending: "A pagar" })}
         emptyMessage="Nenhum lançamento ainda."
         renderRow={(row) => (
           <EntryRow
@@ -68,13 +63,6 @@ export function DebitosTable({
             disabled={pending}
           />
         )}
-      />
-      <TableFooterStats
-        stats={[
-          { label: "Pago", value: totals.pago },
-          { label: "A pagar", value: totals.aPagar },
-          { label: "Total previsto", value: totals.total, emphasis: true },
-        ]}
       />
 
       {editing && (

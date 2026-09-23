@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { EntradaRow } from "@/lib/sheets/types";
 import { EntryFormDialog } from "./entry-form-dialog";
 import { EntryList } from "./entry-list";
 import { EntryRow } from "./entry-row";
 import { InstallmentBadge } from "./installment-badge";
-import { TableFooterStats } from "./table-footer-stats";
+import { checkedStats } from "./table-footer-stats";
 import { TABLE_HEADER_COLORS } from "./table-colors";
 import { TableSectionHeader } from "./table-section-header";
 import { TagBadge } from "./tag-badge";
@@ -27,12 +27,6 @@ export function EntradasTable({
   const [optimisticRows, applyOptimisticToggle] = useOptimisticChecked(rows, "recebido");
   const { toggle, remove, pending } = useRowActions("entradas", year, month, applyOptimisticToggle);
 
-  const totals = useMemo(() => {
-    const total = optimisticRows.reduce((acc, row) => acc + row.valor, 0);
-    const recebido = optimisticRows.filter((row) => row.recebido).reduce((acc, row) => acc + row.valor, 0);
-    return { recebido, aReceber: total - recebido, total };
-  }, [optimisticRows]);
-
   return (
     <section className="flex flex-col gap-3">
       <TableSectionHeader title="Entradas" count={rows.length} />
@@ -40,6 +34,7 @@ export function EntradasTable({
         rows={optimisticRows}
         filterable
         memoryKey="entradas"
+        stats={(list) => checkedStats(list, (row) => row.recebido, { done: "Recebido", pending: "A receber" })}
         emptyMessage="Nenhum lançamento ainda."
         renderRow={(row) => (
           <EntryRow
@@ -62,13 +57,6 @@ export function EntradasTable({
             disabled={pending}
           />
         )}
-      />
-      <TableFooterStats
-        stats={[
-          { label: "Recebido", value: totals.recebido },
-          { label: "A receber", value: totals.aReceber },
-          { label: "Total previsto", value: totals.total, emphasis: true },
-        ]}
       />
 
       {editing && (
