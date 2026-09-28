@@ -1,7 +1,7 @@
 import "server-only";
 import { formatCurrency, toNumber } from "../format/currency";
 import { parseInstallment } from "../format/installment";
-import { fetchMonthGrids, fetchMonthGridsBatch } from "./gridIO";
+import { fetchMonthGridsBatch, fetchMonthGridsCached } from "./gridIO";
 import { locateTables } from "./locateTables";
 import { extractRawRows } from "./rowExtraction";
 import { CARD_ADJUSTMENT_CATEGORY, CARD_ROLLOVER_CATEGORY, TABLE_CONFIGS } from "./tableConfigs";
@@ -27,9 +27,10 @@ function sum(rows: { valor: number }[]): number {
 /**
  * Read-only: rendering a month never writes to the sheet. The "Cartão de crédito" rollover row is
  * kept in sync by the explicit `syncCardRolloverAction`, which the month screen fires after it mounts.
+ * Uses the cached grid read (see `fetchMonthGridsCached`) since this is a plain display path.
  */
 export async function readMonth(spreadsheetId: string, year: string, monthTitle: string): Promise<MonthData> {
-  const { formatted, raw } = await fetchMonthGrids(spreadsheetId, monthTitle);
+  const { formatted, raw } = await fetchMonthGridsCached(spreadsheetId, year, monthTitle);
   return parseMonthGrids(year, monthTitle, formatted, raw);
 }
 

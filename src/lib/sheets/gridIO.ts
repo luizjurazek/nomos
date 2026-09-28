@@ -1,9 +1,14 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { getSheetsClient } from "./client";
+import { monthGridsCacheTag } from "./cacheTags";
 import type { SheetGrid } from "./types";
 
 /** How many rows/columns of a month tab we read — generous enough to cover any table's padding. */
 export const GRID_RANGE = "A1:U300";
+
+/** How long a cached month-grid read is trusted before hitting the Sheets API again. */
+const GRID_CACHE_REVALIDATE_SECONDS = 30;
 
 function quoteSheetTitle(title: string): string {
   return `'${title.replace(/'/g, "''")}'`;
@@ -39,6 +44,26 @@ export async function fetchMonthGrids(
     readGrid(spreadsheetId, sheetTitle, "UNFORMATTED_VALUE"),
   ]);
   return { formatted, raw };
+}
+
+/**
+ * Same as `fetchMonthGrids`, cached briefly per (spreadsheet, month) and tagged so a write to that
+ * month drops it right away (see `monthGridsCacheTag`). Only for call sites that just display the
+ * sheet — the Sheets API quota is limited (60 reads/min, shared by everyone using the app at once)
+ * and this is the pair of calls every month-page view makes. Never use this from a path that reads
+ * the grid to decide what to write (`writeRow.ts`, the card-rollover sync): those need the table's
+ * real, current row positions, not a read that can lag up to `GRID_CACHE_REVALIDATE_SECONDS`.
+ */
+export async function fetchMonthGridsCached(
+  spreadsheetId: string,
+  year: string,
+  sheetTitle: string,
+): Promise<{ formatted: SheetGrid; raw: SheetGrid }> {
+  return unstable_cache(
+    () => fetchMonthGrids(spreadsheetId, sheetTitle),
+    ["month-grids", spreadsheetId, sheetTitle],
+    { tags: [monthGridsCacheTag(year, sheetTitle)], revalidate: GRID_CACHE_REVALIDATE_SECONDS },
+  )();
 }
 
 /**

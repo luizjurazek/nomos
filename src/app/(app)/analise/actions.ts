@@ -2,12 +2,15 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { ANALYSIS_CACHE_TAG } from "@/lib/analysis/readAllYears";
+import { monthGridsCacheTag } from "@/lib/sheets/cacheTags";
+import { CATEGORIES_CACHE_TAG } from "@/lib/sheets/categories";
 import type { PendingInstallment } from "@/lib/sheets/carryOver";
 import { planPendingInstallments, writePendingInstallments } from "@/lib/sheets/carryOverPlan";
 
 /** Drops the cached spreadsheet read so the next render of /analise fetches fresh data. */
 export async function refreshAnalysis(): Promise<void> {
   updateTag(ANALYSIS_CACHE_TAG);
+  updateTag(CATEGORIES_CACHE_TAG);
   revalidatePath("/analise");
 }
 
@@ -30,7 +33,10 @@ export async function applyPendingInstallments(): Promise<{ created: number; err
   const items = await planPendingInstallments();
   const result = await writePendingInstallments(items);
   if (result.created > 0) {
-    for (const item of items.slice(0, result.created)) revalidatePath(`/${item.year}/${item.month}`);
+    for (const item of items.slice(0, result.created)) {
+      updateTag(monthGridsCacheTag(item.year, item.month));
+      revalidatePath(`/${item.year}/${item.month}`);
+    }
     updateTag(ANALYSIS_CACHE_TAG);
     revalidatePath("/analise");
   }

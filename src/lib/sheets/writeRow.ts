@@ -1,5 +1,5 @@
 import "server-only";
-import { getSheetsClient } from "./client";
+import { getSheetsClient, RETRY_POST_OPTIONS } from "./client";
 import { columnIndexToLetter, fetchMonthGrids, quoteSheetTitle } from "./gridIO";
 import { locateTables } from "./locateTables";
 import { findBlankRows } from "./rowExtraction";
@@ -51,17 +51,20 @@ async function insertBlankRows(spreadsheetId: string, monthTitle: string, locati
   const sheetId = await getSheetIdByTitle(spreadsheetId, monthTitle);
   const insertAt = location.totalRows.length > 0 ? location.totalRows[0].row : location.dataEndRow + 1;
 
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      requests: Array.from({ length: count }, () => ({
-        insertDimension: {
-          range: { sheetId, dimension: "ROWS", startIndex: insertAt, endIndex: insertAt + 1 },
-          inheritFromBefore: true,
-        },
-      })),
+  await sheets.spreadsheets.batchUpdate(
+    {
+      spreadsheetId,
+      requestBody: {
+        requests: Array.from({ length: count }, () => ({
+          insertDimension: {
+            range: { sheetId, dimension: "ROWS", startIndex: insertAt, endIndex: insertAt + 1 },
+            inheritFromBefore: true,
+          },
+        })),
+      },
     },
-  });
+    RETRY_POST_OPTIONS,
+  );
 
   return Array.from({ length: count }, (_, i) => insertAt + i);
 }
@@ -88,16 +91,19 @@ export async function createRows(
   const targetRows = [...blankRows, ...insertedRows];
 
   const sheets = getSheetsClient();
-  await sheets.spreadsheets.values.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      valueInputOption: "USER_ENTERED",
-      data: targetRows.map((row, i) => ({
-        range: rowRange(monthTitle, location, config.columnOrder, row),
-        values: [toRowValues(config.columnOrder, rows[i])],
-      })),
+  await sheets.spreadsheets.values.batchUpdate(
+    {
+      spreadsheetId,
+      requestBody: {
+        valueInputOption: "USER_ENTERED",
+        data: targetRows.map((row, i) => ({
+          range: rowRange(monthTitle, location, config.columnOrder, row),
+          values: [toRowValues(config.columnOrder, rows[i])],
+        })),
+      },
     },
-  });
+    RETRY_POST_OPTIONS,
+  );
 
   return targetRows;
 }

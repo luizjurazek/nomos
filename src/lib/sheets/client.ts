@@ -3,6 +3,15 @@ import { google, sheets_v4 } from "googleapis";
 
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
+/**
+ * The googleapis client already retries GET/PUT/HEAD/DELETE with backoff on a 429, but not POST —
+ * pass this as the `options` (2nd) argument on a POST call (`values.batchUpdate`,
+ * `spreadsheets.batchUpdate`) that is safe to retry (idempotent) to get the same behavior there.
+ */
+export const RETRY_POST_OPTIONS = {
+  retryConfig: { httpMethodsToRetry: ["GET", "HEAD", "PUT", "OPTIONS", "DELETE", "POST"] },
+};
+
 let cachedAuth: InstanceType<typeof google.auth.JWT> | null = null;
 let cachedClient: sheets_v4.Sheets | null = null;
 

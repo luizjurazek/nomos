@@ -1,15 +1,17 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { syncCardRollover } from "@/lib/sheets/cardRollover";
 import { createRow, deleteRow, updateCell, updateRow } from "@/lib/sheets/writeRow";
 import { getSpreadsheetId } from "@/lib/sheets/spreadsheetRegistry";
 import { CARD_ADJUSTMENT_CATEGORY } from "@/lib/sheets/tableConfigs";
 import { MONTH_NAMES, getMonthNumber } from "@/lib/sheets/monthNames";
 import { formatSheetDate, parseSheetDate } from "@/lib/format/date";
+import { monthGridsCacheTag } from "@/lib/sheets/cacheTags";
 import type { ColumnRole, SheetCell, TableId } from "@/lib/sheets/types";
 
 function revalidateMonth(year: string, month: string) {
+  updateTag(monthGridsCacheTag(year, month));
   revalidatePath(`/${year}/${month}`);
 }
 
