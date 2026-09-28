@@ -43,3 +43,11 @@ export function getLatestAvailableYear(): string | null {
   const years = listAvailableYears();
   return years.length > 0 ? years[years.length - 1] : null;
 }
+
+/**
+ * The spreadsheet categories (the "Dados" tab) are read from. Temporary: pinned to 2026's
+ * spreadsheet for every year until categories move to their own dedicated spreadsheet.
+ */
+export function getCategoriesSpreadsheetId(): string {
+  return getSpreadsheetId("2026");
+}

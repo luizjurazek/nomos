@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCategories } from "@/lib/sheets/categories";
-import { getSpreadsheetId } from "@/lib/sheets/spreadsheetRegistry";
+import { getCategoriesSpreadsheetId } from "@/lib/sheets/spreadsheetRegistry";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ year: string }> }) {
-  const { year } = await params;
+export async function GET(_request: Request, _context: { params: Promise<{ year: string }> }) {
   try {
-    const spreadsheetId = getSpreadsheetId(year);
-    const categories = await getCategories(spreadsheetId);
+    const categories = await getCategories(getCategoriesSpreadsheetId());
     return NextResponse.json(categories);
   } catch {
     return NextResponse.json({ entradas: [], saidas: [] }, { status: 404 });
