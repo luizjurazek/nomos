@@ -12,7 +12,8 @@ export default async function MonthLayout({
   children: React.ReactNode;
   params: Promise<{ year: string; month: string }>;
 }) {
-  const { year, month } = await params;
+  const { year, month: rawMonth } = await params;
+  const month = decodeURIComponent(rawMonth);
   const years = listAvailableYears();
 
   return (

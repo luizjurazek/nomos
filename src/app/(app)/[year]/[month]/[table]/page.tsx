@@ -7,8 +7,8 @@ export default async function TableDetailPage({
 }: {
   params: Promise<{ year: string; month: string; table: string }>;
 }) {
-  const { year, month, table } = await params;
+  const { year, month: rawMonth, table } = await params;
   if (!isTableSlug(table)) notFound();
 
-  redirect(`/${year}/${month}?tab=${table}`);
+  redirect(`/${year}/${decodeURIComponent(rawMonth)}?tab=${table}`);
 }

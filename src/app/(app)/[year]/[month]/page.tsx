@@ -16,7 +16,8 @@ export default async function MonthPage({
   params: Promise<{ year: string; month: string }>;
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const [{ year, month }, { tab }] = await Promise.all([params, searchParams]);
+  const [{ year, month: rawMonth }, { tab }] = await Promise.all([params, searchParams]);
+  const month = decodeURIComponent(rawMonth);
 
   let spreadsheetId: string;
   try {
