@@ -21,7 +21,7 @@ const NEXT_BILLS = 6;
 interface AnalysisViewProps {
   months: AnalysisMonth[];
   now: Now;
-  /** Savings from before this app existed (see `getInitialSavingsBalance`); only counted in "Tudo", never in a shorter period. */
+  /** Savings from before this app existed (see `getInitialSavingsBalance`); predates every tracked month, so it's always counted regardless of the selected period. */
   initialBalance: number;
 }
 
@@ -71,8 +71,6 @@ export function AnalysisView({ months, now, initialBalance }: AnalysisViewProps)
   const filtered = withSavings || scope === "period" || selectedKey !== defaultKey;
 
   const summary = useMemo(() => summarizePeriod(visible, withSavings), [visible, withSavings]);
-  // Only counted in "Tudo": any other range starts after the tracking began, so the initial balance isn't part of it.
-  const periodInitialBalance = range === "all" ? initialBalance : 0;
   const shown = useMemo(() => viewPoints(visible, withSavings), [visible, withSavings]);
   const selectedPoint = useMemo(() => visible.find((point) => point.key === selectedKey) ?? null, [visible, selectedKey]);
   // Months of the period with a tab: the only ones that have categories.
@@ -120,11 +118,11 @@ export function AnalysisView({ months, now, initialBalance }: AnalysisViewProps)
             <>
               <section className="flex flex-col gap-3">
                 <SectionHeader title="Resumo" scope={scope === "month" && monthLabel ? monthLabel : periodLabel} />
-                <SummaryCards scope={scope} summary={summary} point={selectedPoint} withSavings={withSavings} initialBalance={periodInitialBalance} />
+                <SummaryCards scope={scope} summary={summary} point={selectedPoint} withSavings={withSavings} initialBalance={initialBalance} />
               </section>
               <section className="flex flex-col gap-3">
                 <SectionHeader title="Evolução mês a mês" scope={`${periodLabel} · mês escolhido em destaque`} />
-                <MonthlyChart points={shown} selectedKey={selectedKey} onSelect={focusMonth} withSavings={withSavings} initialBalance={periodInitialBalance} />
+                <MonthlyChart points={shown} selectedKey={selectedKey} onSelect={focusMonth} withSavings={withSavings} initialBalance={initialBalance} />
               </section>
               {/* Each section takes the full width, one after the other. */}
               <div className="flex flex-col gap-5">
