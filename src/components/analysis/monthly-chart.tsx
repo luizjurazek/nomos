@@ -115,9 +115,12 @@ interface MonthlyChartProps {
   onSelect: (key: string) => void;
   /** Whether `points` carry the savings money in entradas/débitos (see `viewPoint`); the page-wide switch. */
   withSavings: boolean;
+  /** Savings from before this app existed. Only the table view shows it (as a row before the first month); the bar/line
+   *  views plot monthly flows, not a running balance, so there's no natural spot for a one-off starting point there. */
+  initialBalance: number;
 }
 
-export function MonthlyChart({ points, selectedKey, onSelect, withSavings }: MonthlyChartProps) {
+export function MonthlyChart({ points, selectedKey, onSelect, withSavings, initialBalance }: MonthlyChartProps) {
   const [view, setView] = useState<View>("table");
   // Mouse/keyboard hover: the month plus the x (relative to the chart box) where its tooltip is anchored.
   const [hover, setHover] = useState<{ key: string; x: number } | null>(null);
@@ -260,7 +263,14 @@ export function MonthlyChart({ points, selectedKey, onSelect, withSavings }: Mon
       <div ref={chartRef} className={`relative flex ${table ? "invisible" : ""}`}>
         {table && (
           <div className="visible absolute inset-0 z-10 overflow-auto rounded-xl bg-card">
-            <MonthTable points={points} selectedKey={selectedKey} onSelect={choose} onHover={(key) => setHover(key ? { key, x: 0 } : null)} embedded />
+            <MonthTable
+              points={points}
+              selectedKey={selectedKey}
+              onSelect={choose}
+              onHover={(key) => setHover(key ? { key, x: 0 } : null)}
+              embedded
+              initialBalance={initialBalance}
+            />
           </div>
         )}
         <svg width={Y_AXIS_W} height={height} className="shrink-0 text-foreground-secondary" aria-hidden>

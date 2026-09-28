@@ -26,7 +26,9 @@ function savingsStats(aportes: number | null, retiradas: number | null, realInco
   ];
 }
 
-function periodTiles(summary: PeriodSummary): Tile[] {
+/** `initialBalance` (savings from before this app existed) is added to the headline only, never to "Da renda": that stat is about this period's own income. */
+function periodTiles(summary: PeriodSummary, initialBalance: number): Tile[] {
+  const poupadoTotal = summary.poupadoTotal + initialBalance;
   return [
     { label: "Saldo do período", value: formatBRL(summary.saldoTotal), hint: `${summary.months} ${summary.months === 1 ? "mês" : "meses"}` },
     { label: "Entradas por mês", value: formatBRL(summary.avgEntradas), hint: "média", dot: TABLE_HEADER_COLORS.entradas },
@@ -42,10 +44,13 @@ function periodTiles(summary: PeriodSummary): Tile[] {
     },
     {
       label: "Poupado no período",
-      value: formatBRL(summary.poupadoTotal),
+      value: formatBRL(poupadoTotal),
       dot: SAVINGS_COLOR,
-      negative: summary.poupadoTotal < 0,
-      stats: savingsStats(summary.aportesTotal, summary.retiradasTotal, summary.realIncome, summary.poupadoTotal),
+      negative: poupadoTotal < 0,
+      stats: [
+        ...savingsStats(summary.aportesTotal, summary.retiradasTotal, summary.realIncome, summary.poupadoTotal),
+        ...(initialBalance ? [{ label: "Saldo inicial", value: money(initialBalance) }] : []),
+      ],
     },
   ];
 }
@@ -86,13 +91,16 @@ export function SummaryCards({
   summary,
   point,
   withSavings,
+  initialBalance,
 }: {
   scope: Scope;
   summary: PeriodSummary;
   point: MonthPoint | null;
   withSavings: boolean;
+  /** Savings from before this app existed; only meaningful for a period, so a selected month ignores it. */
+  initialBalance: number;
 }) {
-  const tiles = scope === "month" && point ? monthTiles(point, withSavings) : periodTiles(summary);
+  const tiles = scope === "month" && point ? monthTiles(point, withSavings) : periodTiles(summary, initialBalance);
 
   // Grid items stretch to the tallest of their row, so a taller tile lifts its neighbour instead of leaving it short.
   return (

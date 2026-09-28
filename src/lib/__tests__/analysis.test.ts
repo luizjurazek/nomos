@@ -495,6 +495,11 @@ describe("summarizeSavings", () => {
     const summary = summarizeSavings(null, at("Setembro"), NOW, 42);
     expect(summary).toEqual({ month: 42, total: null, through: at("Setembro"), isProjection: false });
   });
+
+  it("adds the initial balance as a flat offset on top of the running total", () => {
+    const summary = summarizeSavings(history, at("Agosto"), NOW, 250, 1000);
+    expect(summary.total).toBe(1000 + 300 + 300 + 250);
+  });
 });
 
 describe("monthDataNet", () => {

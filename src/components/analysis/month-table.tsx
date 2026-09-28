@@ -14,6 +14,7 @@ export function MonthTable({
   onSelect,
   onHover,
   embedded = false,
+  initialBalance = 0,
 }: {
   points: MonthPoint[];
   selectedKey: string | null;
@@ -22,6 +23,8 @@ export function MonthTable({
   onHover?: (key: string | null) => void;
   /** Drops the card frame and the scrolling when the table already sits inside a scrolling card. */
   embedded?: boolean;
+  /** Savings from before this app existed; shown as a row before the first month, not tied to any of them. */
+  initialBalance?: number;
 }) {
   const columns = [
     { label: "Entradas", color: TABLE_HEADER_COLORS.entradas },
@@ -48,6 +51,18 @@ export function MonthTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
+          {initialBalance !== 0 && (
+            <tr className="text-foreground-secondary">
+              <th scope="row" className="px-3 py-2 text-left font-medium">
+                Saldo inicial
+              </th>
+              <td className="px-3 py-2 text-right">—</td>
+              <td className="px-3 py-2 text-right">—</td>
+              <td className="px-3 py-2 text-right">—</td>
+              <td className={`px-3 py-2 text-right ${initialBalance < 0 ? "text-destructive" : ""}`}>{money(initialBalance)}</td>
+              <td className="px-3 py-2 text-right">—</td>
+            </tr>
+          )}
           {points.map((raw) => {
             // Months past the last tab list what is already contracted, in the place of the (unknown) real values.
             const point = committedView(raw);

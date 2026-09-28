@@ -2,7 +2,7 @@ import "server-only";
 import { getSheetsClient } from "./client";
 import { monthIndex } from "./monthNames";
 
-const NON_MONTH_TABS = new Set(["dados"]);
+const NON_MONTH_TABS = new Set(["dados", "config"]);
 
 /** Lists a spreadsheet's month tabs (excludes "Dados" and anything else that isn't a recognized month name), chronologically ordered. Does not assume every year has all 12 months. */
 export async function listMonths(spreadsheetId: string): Promise<string[]> {

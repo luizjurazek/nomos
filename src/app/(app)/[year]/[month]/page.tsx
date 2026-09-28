@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { MonthHome } from "@/components/finance/month-home";
 import { isTableSlug } from "@/components/finance/table-tabs";
+import { getInitialSavingsBalance } from "@/lib/analysis/config";
 import { currentMonthNow } from "@/lib/analysis/months";
 import { readAllYears } from "@/lib/analysis/readAllYears";
 import { monthDataNet, summarizeSavings } from "@/lib/analysis/savings";
@@ -24,14 +25,16 @@ export default async function MonthPage({
     notFound();
   }
 
-  const [monthData, categories, history] = await Promise.all([
+  const [monthData, categories, history, initialBalance] = await Promise.all([
     readMonth(spreadsheetId, year, month),
     getCategories(spreadsheetId),
     // Every month of every year (cached ~1 min, shared with /analise): only feeds the savings total, so
     // a failed read just hides that number instead of breaking the month.
     readAllYears().catch(() => null),
+    // Savings from before this app existed; missing "Config" tab just means no offset.
+    getInitialSavingsBalance().catch(() => 0),
   ]);
-  const savings = summarizeSavings(history, { year, month }, currentMonthNow(), monthDataNet(monthData));
+  const savings = summarizeSavings(history, { year, month }, currentMonthNow(), monthDataNet(monthData), initialBalance);
 
   return (
     <MonthHome

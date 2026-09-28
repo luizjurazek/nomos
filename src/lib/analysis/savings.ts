@@ -28,9 +28,16 @@ export function monthDataNet(data: Pick<MonthData, "debitos" | "entradas">): num
  * Savings for the month being viewed plus the running total up to it. For future months the total
  * is a projection (planned savings), flagged by `isProjection`. The viewed
  * month itself comes from `viewedNet`, so edits show up at once; earlier months come from `history`,
- * which may be a few seconds stale.
+ * which may be a few seconds stale. `initialBalance` (default 0) is money saved before any month on
+ * record — see `getInitialSavingsBalance` — added once as a flat offset, never attached to a month.
  */
-export function summarizeSavings(history: AnalysisMonth[] | null, viewed: MonthRef, now: Now, viewedNet: number): SavingsSummary {
+export function summarizeSavings(
+  history: AnalysisMonth[] | null,
+  viewed: MonthRef,
+  now: Now,
+  viewedNet: number,
+  initialBalance = 0,
+): SavingsSummary {
   const currentRef: MonthRef = { year: String(now.year), month: MONTH_NAMES[now.monthIndex] };
   const through = viewed;
   const isProjection = monthKey(viewed) > monthKey(currentRef);
@@ -39,5 +46,5 @@ export function summarizeSavings(history: AnalysisMonth[] | null, viewed: MonthR
   const throughKey = monthKey(through);
   const before = history.filter((month) => monthKey(month) < throughKey).reduce((acc, month) => acc + monthNet(month), 0);
 
-  return { month: viewedNet, total: before + viewedNet, through, isProjection };
+  return { month: viewedNet, total: initialBalance + before + viewedNet, through, isProjection };
 }
