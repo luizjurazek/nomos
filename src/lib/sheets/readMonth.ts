@@ -4,7 +4,7 @@ import { parseInstallment } from "../format/installment";
 import { fetchMonthGrids } from "./gridIO";
 import { locateTables } from "./locateTables";
 import { extractRawRows } from "./rowExtraction";
-import { CARD_ROLLOVER_CATEGORY, TABLE_CONFIGS } from "./tableConfigs";
+import { CARD_ADJUSTMENT_CATEGORY, CARD_ROLLOVER_CATEGORY, TABLE_CONFIGS } from "./tableConfigs";
 import type {
   DebitoRow,
   EntradaRow,
@@ -65,6 +65,7 @@ export async function readMonth(spreadsheetId: string, year: string, monthTitle:
           pago: bool(row.values.checkbox),
           isPoupanca: TABLE_CONFIGS.debitos.semanticTags.some((tag) => tag.category === categoria),
           isCardRollover: categoria === CARD_ROLLOVER_CATEGORY,
+          isCardAdjustment: categoria === CARD_ADJUSTMENT_CATEGORY,
         };
       })
     : [];

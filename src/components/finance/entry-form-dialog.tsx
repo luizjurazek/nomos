@@ -21,7 +21,7 @@ import { DateInput } from "./date-input";
 import { TABLE_THEME } from "./table-theme";
 import { isValidSheetDate } from "@/lib/format/date";
 import { getMonthNumber } from "@/lib/sheets/monthNames";
-import { TABLE_CONFIGS } from "@/lib/sheets/tableConfigs";
+import { CARD_ADJUSTMENT_CATEGORY, TABLE_CONFIGS } from "@/lib/sheets/tableConfigs";
 import type { ColumnRole, SheetCell, TableId } from "@/lib/sheets/types";
 
 // Larger touch targets for the dropdown options on mobile.
@@ -86,15 +86,21 @@ export function EntryFormDialog({
   const isVoucherCreate = !isEdit && VOUCHER_TABLES.some((option) => option.tableId === initialTableId);
   const config = TABLE_CONFIGS[tableId];
   const theme = TABLE_THEME[tableId];
-  const [values, setValues] = useState<Record<ColumnRole, SheetCell>>(() => ({
-    ...defaultValues(year, month),
-    ...initialValues,
-  }));
+  const [values, setValues] = useState<Record<ColumnRole, SheetCell>>(() => {
+    const merged = { ...defaultValues(year, month), ...initialValues };
+    // Stored negative (débito or Nubank), but the field always shows/takes a plain magnitude (see isCardAdjustment).
+    if ((initialTableId === "debitos" || initialTableId === "nubank") && merged.category === CARD_ADJUSTMENT_CATEGORY) {
+      merged.valor = Math.abs(Number(merged.valor ?? 0));
+    }
+    return merged;
+  });
   // Raw text of the installments field, so it can sit empty while typing (a number state would snap back to 1).
   const [installmentsInput, setInstallmentsInput] = useState("1");
   const installments = Math.max(1, Number(installmentsInput) || 1);
   const [pending, startTransition] = useTransition();
   const showInstallments = config.bulkInstallments && !isEdit;
+  // The currency input can't type a "-": for this category the typed amount is negated on save instead.
+  const isCardAdjustment = (tableId === "debitos" || tableId === "nubank") && values.category === CARD_ADJUSTMENT_CATEGORY;
 
   const setField = (role: ColumnRole, value: SheetCell) => setValues((prev) => ({ ...prev, [role]: value }));
 
@@ -115,14 +121,15 @@ export function EntryFormDialog({
       toast.error("Selecione quem.");
       return;
     }
+    const submitValues = isCardAdjustment ? { ...values, valor: -Math.abs(Number(values.valor ?? 0)) } : values;
     startTransition(async () => {
       try {
         if (isEdit) {
-          await updateEntry(year, month, tableId, initialValues!.rowIndex!, values);
+          await updateEntry(year, month, tableId, initialValues!.rowIndex!, submitValues);
         } else if (showInstallments && installments > 1) {
-          await createInstallmentEntries(year, month, tableId, values, installments);
+          await createInstallmentEntries(year, month, tableId, submitValues, installments);
         } else {
-          await createEntry(year, month, tableId, values);
+          await createEntry(year, month, tableId, submitValues);
         }
         toast.success(isEdit ? "Lançamento atualizado." : "Lançamento adicionado.");
         onOpenChange(false);
@@ -237,6 +244,14 @@ export function EntryFormDialog({
                     value={Number(values.valor ?? 0)}
                     onChange={(value) => setField("valor", value)}
                   />
+                  {isCardAdjustment && tableId === "debitos" && (
+                    <span className="text-xs text-foreground-secondary">
+                      Lançado como valor negativo: reduz a fatura deste mês, e cria automaticamente a mesma linha no Nubank, o que também desconta a fatura do mês seguinte.
+                    </span>
+                  )}
+                  {isCardAdjustment && tableId === "nubank" && (
+                    <span className="text-xs text-foreground-secondary">Lançado como valor negativo: reduz o total que vai virar a fatura sincronizada do mês seguinte.</span>
+                  )}
                 </>
               )}
               {role === "valor" && showInstallments && (

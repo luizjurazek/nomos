@@ -2,7 +2,7 @@ import { toNumber } from "../format/currency";
 import { parseInstallment } from "../format/installment";
 import { locateTables } from "../sheets/locateTables";
 import { extractRawRows } from "../sheets/rowExtraction";
-import { CARD_ROLLOVER_CATEGORY, TABLE_CONFIGS } from "../sheets/tableConfigs";
+import { CARD_ADJUSTMENT_CATEGORY, CARD_ROLLOVER_CATEGORY, TABLE_CONFIGS } from "../sheets/tableConfigs";
 import type { SheetCell, SheetGrid } from "../sheets/types";
 import type { AnalysisDebito, AnalysisEntrada, AnalysisMonth, AnalysisNubank } from "./types";
 
@@ -42,6 +42,7 @@ export function parseMonth(year: string, month: string, formatted: SheetGrid, ra
           installment: parseInstallment(name),
           isTransfer: TABLE_CONFIGS.debitos.semanticTags.some((tag) => tag.category === categoria),
           isCardRollover: categoria === CARD_ROLLOVER_CATEGORY,
+          isCardAdjustment: categoria === CARD_ADJUSTMENT_CATEGORY,
         };
       })
     : [];

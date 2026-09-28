@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { syncCardRollover } from "@/lib/sheets/cardRollover";
 import { createRow, deleteRow, updateCell, updateRow } from "@/lib/sheets/writeRow";
 import { getSpreadsheetId } from "@/lib/sheets/spreadsheetRegistry";
+import { CARD_ADJUSTMENT_CATEGORY } from "@/lib/sheets/tableConfigs";
 import { MONTH_NAMES, getMonthNumber } from "@/lib/sheets/monthNames";
 import { formatSheetDate, parseSheetDate } from "@/lib/format/date";
 import type { ColumnRole, SheetCell, TableId } from "@/lib/sheets/types";
@@ -20,6 +21,17 @@ export async function createEntry(
 ): Promise<void> {
   const spreadsheetId = getSpreadsheetId(year);
   await createRow(spreadsheetId, month, tableId, valuesByRole);
+  // A card discount also gets a matching negative line in this month's Nubank, so next month's
+  // auto-sync (which sums this month's Nubank total) carries the discount forward on its own.
+  if (tableId === "debitos" && valuesByRole.category === CARD_ADJUSTMENT_CATEGORY) {
+    await createRow(spreadsheetId, month, "nubank", {
+      date: valuesByRole.date,
+      name: valuesByRole.name,
+      category: CARD_ADJUSTMENT_CATEGORY,
+      quem: valuesByRole.quem,
+      valor: valuesByRole.valor,
+    });
+  }
   revalidateMonth(year, month);
 }
 

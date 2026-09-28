@@ -52,6 +52,11 @@ export function DebitosTable({
                     Sincronizado automaticamente
                   </Badge>
                 )}
+                {row.isCardAdjustment && (
+                  <Badge variant="outline" className="font-normal">
+                    Espelhado no Nubank
+                  </Badge>
+                )}
               </>
             }
             checked={row.pago}

@@ -53,6 +53,7 @@ export interface DebitoRow extends RowBase {
   pago: boolean;
   isPoupanca: boolean;
   isCardRollover?: boolean;
+  isCardAdjustment?: boolean;
 }
 
 export interface NubankRow extends RowBase {

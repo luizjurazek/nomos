@@ -62,15 +62,23 @@ export function viewPoints(points: MonthPoint[], withSavings: boolean): MonthPoi
 /** Longest stretch of months, past the last tab, that we project card bills for. */
 const PROJECTION_HORIZON = 12;
 
+/** Manual discounts on the card bill (cashback, dispute won...) booked in `month`, always negative. */
+function cardAdjustment(month: AnalysisMonth): number {
+  return sumValues(month.debitos.filter((row) => row.isCardAdjustment));
+}
+
 /**
  * The card is analysed by payment date: the bill paid in month M is the sum of M−1's Nubank table
- * (the same rule `cardRollover` uses). When M−1 has no tab we fall back to the synced rollover row.
+ * (the same rule `cardRollover` uses), plus any "Abatimento cartão de crédito" débito booked in M itself — a
+ * manual discount on that bill, not a purchase. When M−1 has no tab we fall back to the synced
+ * rollover row, which the sync never adjusts, so the same discount still applies on top of it.
  */
 function cardBillFor(byKey: Map<string, AnalysisMonth>, month: AnalysisMonth): number {
+  const adjustment = cardAdjustment(month);
   const previous = previousRef(month);
   const previousMonth = previous ? byKey.get(monthKey(previous)) : undefined;
-  if (previousMonth) return sumValues(previousMonth.nubank);
-  return sumValues(month.debitos.filter((row) => row.isCardRollover));
+  if (previousMonth) return sumValues(previousMonth.nubank) + adjustment;
+  return sumValues(month.debitos.filter((row) => row.isCardRollover)) + adjustment;
 }
 
 /**
@@ -85,7 +93,8 @@ export function buildTimeline(months: AnalysisMonth[], now: Now): MonthPoint[] {
 
   const points: MonthPoint[] = sorted.map((month) => {
     const entradas = sumValues(month.entradas);
-    const debitos = sumValues(month.debitos.filter((row) => !row.isCardRollover));
+    // The card discount is folded into `cartao` (via cardBillFor), not counted here too.
+    const debitos = sumValues(month.debitos.filter((row) => !row.isCardRollover && !row.isCardAdjustment));
     const cartao = cardBillFor(byKey, month);
     const aportes = sumValues(month.debitos.filter((row) => row.isTransfer));
     const retiradas = sumValues(month.entradas.filter((row) => row.isTransfer));

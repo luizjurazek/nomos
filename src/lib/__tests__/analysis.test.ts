@@ -29,6 +29,7 @@ const debito = (valor: number, categoria: string, extra: Partial<AnalysisDebito>
   installment: null,
   isTransfer: false,
   isCardRollover: false,
+  isCardAdjustment: false,
   ...extra,
 });
 
@@ -88,6 +89,33 @@ describe("buildTimeline", () => {
   it("falls back to the synced rollover line when the previous month has no tab", () => {
     const first = buildTimeline([months[1]], NOW)[0];
     expect(first.cartao).toBe(999);
+  });
+
+  it("nets a manual card discount out of the bill, and drops it from the regular débitos too", () => {
+    const withAdjustment = [
+      months[0],
+      month("2026", "Setembro", {
+        entradas: [entrada(5000)],
+        debitos: [
+          debito(1000, "Moradia"),
+          debito(999, "Cartão de crédito", { isCardRollover: true }),
+          debito(-300, "Abatimento cartão de crédito", { isCardAdjustment: true }),
+        ],
+      }),
+    ];
+    const setembro = buildTimeline(withAdjustment, NOW).find((point) => point.key === "2026-09")!;
+    expect(setembro.cartao).toBe(500 - 300);
+    expect(setembro.debitos).toBe(1000);
+  });
+
+  it("also nets the discount when falling back to the synced rollover line", () => {
+    const cardOnly = month("2026", "Setembro", {
+      debitos: [
+        debito(999, "Cartão de crédito", { isCardRollover: true }),
+        debito(-300, "Abatimento cartão de crédito", { isCardAdjustment: true }),
+      ],
+    });
+    expect(buildTimeline([cardOnly], NOW)[0].cartao).toBe(999 - 300);
   });
 
   it("marks only months after the current one as projected", () => {

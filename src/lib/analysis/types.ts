@@ -25,6 +25,8 @@ export interface AnalysisDebito extends AnalysisRow {
   isTransfer: boolean;
   /** The auto-synced "Cartão de crédito" line (previous month's Nubank total). */
   isCardRollover: boolean;
+  /** A manual discount on the card bill (cashback, dispute won...), always negative; folded into the card total, not the regular débitos one. */
+  isCardAdjustment: boolean;
 }
 
 export interface AnalysisNubank extends AnalysisRow {

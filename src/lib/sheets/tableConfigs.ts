@@ -105,3 +105,11 @@ export const TABLE_CONFIGS: Record<TableId, TableTypeConfig> = {
 export const CARD_ROLLOVER_CATEGORY = "Cartão de crédito";
 export const CARD_ROLLOVER_DEFAULT_NAME = "Nubank";
 export const CARD_ROLLOVER_DEFAULT_QUEM: string = "Luiz e Jéssica";
+
+/**
+ * A manual discount on the card bill (cashback, dispute won...). Booked as its own débito (always
+ * negative, corrects the month's own already-synced bill) and mirrored into Nubank with the same
+ * negative value, so next month's auto-sync — which sums this month's Nubank table — carries the
+ * discount forward too. See `createEntry` in `actions.ts`, which creates that mirrored row.
+ */
+export const CARD_ADJUSTMENT_CATEGORY = "Abatimento cartão de crédito";
