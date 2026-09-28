@@ -1,7 +1,7 @@
 import "server-only";
 import { formatCurrency, toNumber } from "../format/currency";
 import { parseInstallment } from "../format/installment";
-import { fetchMonthGrids } from "./gridIO";
+import { fetchMonthGrids, fetchMonthGridsBatch } from "./gridIO";
 import { locateTables } from "./locateTables";
 import { extractRawRows } from "./rowExtraction";
 import { CARD_ADJUSTMENT_CATEGORY, CARD_ROLLOVER_CATEGORY, TABLE_CONFIGS } from "./tableConfigs";
@@ -12,6 +12,7 @@ import type {
   MonthKpis,
   NubankRow,
   SheetCell,
+  SheetGrid,
   ValeAlimentacaoConsumoRow,
   ValeAlimentacaoCreditoRow,
 } from "./types";
@@ -29,6 +30,25 @@ function sum(rows: { valor: number }[]): number {
  */
 export async function readMonth(spreadsheetId: string, year: string, monthTitle: string): Promise<MonthData> {
   const { formatted, raw } = await fetchMonthGrids(spreadsheetId, monthTitle);
+  return parseMonthGrids(year, monthTitle, formatted, raw);
+}
+
+/**
+ * Reads several month tabs of the same spreadsheet in 2 batched requests instead of 2 per month —
+ * for callers (like the installment carry-over plan) that need many months at once and would
+ * otherwise serialize a long chain of round trips.
+ */
+export async function readMonths(spreadsheetId: string, year: string, monthTitles: string[]): Promise<Map<string, MonthData>> {
+  const grids = await fetchMonthGridsBatch(spreadsheetId, monthTitles);
+  const result = new Map<string, MonthData>();
+  for (const monthTitle of monthTitles) {
+    const grid = grids.get(monthTitle);
+    if (grid) result.set(monthTitle, parseMonthGrids(year, monthTitle, grid.formatted, grid.raw));
+  }
+  return result;
+}
+
+function parseMonthGrids(year: string, monthTitle: string, formatted: SheetGrid, raw: SheetGrid): MonthData {
   const located = locateTables(formatted);
 
   const entradas: EntradaRow[] = located.entradas

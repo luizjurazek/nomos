@@ -2,7 +2,7 @@ import "server-only";
 import { getSheetsClient } from "./client";
 import { columnIndexToLetter, fetchMonthGrids, quoteSheetTitle } from "./gridIO";
 import { locateTables } from "./locateTables";
-import { findBlankRow } from "./rowExtraction";
+import { findBlankRows } from "./rowExtraction";
 import { getSheetIdByTitle } from "./sheetMeta";
 import { TABLE_CONFIGS } from "./tableConfigs";
 import type { ColumnRole, SheetCell, TableId, TableLocation } from "./types";
@@ -38,13 +38,15 @@ function toRowValues(columnOrder: ColumnRole[], valuesByRole: Partial<Record<Col
 }
 
 /**
- * Inserts a real row just above the table's first Total row (shifting it and everything below
- * down by one), or right after the data range if the table has no Total row at all. Uses
- * inheritFromBefore so the new row picks up the formatting (currency, checkbox validation) of
- * the row above it, and — as a courtesy — keeps the sheet's own SUM/SUMIF formulas correct for
- * anyone opening it directly.
+ * Inserts `count` real rows just above the table's first Total row (shifting it and everything
+ * below down), or right after the data range if the table has no Total row at all — in a single
+ * `batchUpdate` call, one `insertDimension` request per row, all at the same index: each
+ * insertion pushes the previous one down, so the result is `count` consecutive blank rows
+ * starting at that index. Uses inheritFromBefore so each new row picks up the formatting
+ * (currency, checkbox validation) of the row above it, and — as a courtesy — keeps the sheet's
+ * own SUM/SUMIF formulas correct for anyone opening it directly.
  */
-async function insertBlankRow(spreadsheetId: string, monthTitle: string, location: TableLocation): Promise<number> {
+async function insertBlankRows(spreadsheetId: string, monthTitle: string, location: TableLocation, count: number): Promise<number[]> {
   const sheets = getSheetsClient();
   const sheetId = await getSheetIdByTitle(spreadsheetId, monthTitle);
   const insertAt = location.totalRows.length > 0 ? location.totalRows[0].row : location.dataEndRow + 1;
@@ -52,47 +54,63 @@ async function insertBlankRow(spreadsheetId: string, monthTitle: string, locatio
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
-      requests: [
-        {
-          insertDimension: {
-            range: { sheetId, dimension: "ROWS", startIndex: insertAt, endIndex: insertAt + 1 },
-            inheritFromBefore: true,
-          },
+      requests: Array.from({ length: count }, () => ({
+        insertDimension: {
+          range: { sheetId, dimension: "ROWS", startIndex: insertAt, endIndex: insertAt + 1 },
+          inheritFromBefore: true,
         },
-      ],
+      })),
     },
   });
 
-  return insertAt;
+  return Array.from({ length: count }, (_, i) => insertAt + i);
 }
 
 /**
- * Creates a new entry in the given table: reuses the first blank slot already in the sheet
- * (Entradas/Débitos still have manually pre-padded rows today), or inserts a brand-new row when
- * none is free — which is the normal path for tables like Nubank/Vale Alimentação-consumo that
- * have no padding at all. Either way, the user never has to pre-create blank rows by hand.
+ * Creates several new entries in the given table in one round trip: reuses whatever blank slots
+ * are already in the sheet (Entradas/Débitos still have manually pre-padded rows today), inserting
+ * new rows only for the remainder — which is the normal path for tables like Nubank/Vale
+ * Alimentação-consumo that have no padding at all — then writes every row's values in a single
+ * `values.batchUpdate` call instead of one `values.update` per row.
  */
+export async function createRows(
+  spreadsheetId: string,
+  monthTitle: string,
+  tableId: TableId,
+  rows: Partial<Record<ColumnRole, SheetCell>>[],
+): Promise<number[]> {
+  if (rows.length === 0) return [];
+  const config = TABLE_CONFIGS[tableId];
+  const { raw, location } = await locateTable(spreadsheetId, monthTitle, tableId);
+
+  const blankRows = findBlankRows(raw, location, config.columnOrder, rows.length);
+  const insertedRows = rows.length > blankRows.length ? await insertBlankRows(spreadsheetId, monthTitle, location, rows.length - blankRows.length) : [];
+  const targetRows = [...blankRows, ...insertedRows];
+
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      valueInputOption: "USER_ENTERED",
+      data: targetRows.map((row, i) => ({
+        range: rowRange(monthTitle, location, config.columnOrder, row),
+        values: [toRowValues(config.columnOrder, rows[i])],
+      })),
+    },
+  });
+
+  return targetRows;
+}
+
+/** Creates a single new entry in the given table — see `createRows` for how the slot is picked. */
 export async function createRow(
   spreadsheetId: string,
   monthTitle: string,
   tableId: TableId,
   valuesByRole: Partial<Record<ColumnRole, SheetCell>>,
 ): Promise<number> {
-  const config = TABLE_CONFIGS[tableId];
-  const { raw, location } = await locateTable(spreadsheetId, monthTitle, tableId);
-
-  const blankRow = findBlankRow(raw, location, config.columnOrder);
-  const targetRow = blankRow ?? (await insertBlankRow(spreadsheetId, monthTitle, location));
-
-  const sheets = getSheetsClient();
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: rowRange(monthTitle, location, config.columnOrder, targetRow),
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [toRowValues(config.columnOrder, valuesByRole)] },
-  });
-
-  return targetRow;
+  const [row] = await createRows(spreadsheetId, monthTitle, tableId, [valuesByRole]);
+  return row;
 }
 
 /** Overwrites an existing row's full contents (used by edit forms). */

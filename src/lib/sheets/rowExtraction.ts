@@ -35,8 +35,14 @@ export function extractRawRows(raw: SheetGrid, location: TableLocation, columnOr
 
 /** Finds the first empty slot within a table's data range, if any — used before falling back to inserting a new row. */
 export function findBlankRow(raw: SheetGrid, location: TableLocation, columnOrder: ColumnRole[]): number | null {
-  for (let row = location.dataStartRow; row <= location.dataEndRow; row++) {
-    if (isBlankRow(readRowValues(raw, location, columnOrder, row))) return row;
+  return findBlankRows(raw, location, columnOrder, 1)[0] ?? null;
+}
+
+/** Same as `findBlankRow`, but collects up to `count` empty slots — for writing several rows in one go. */
+export function findBlankRows(raw: SheetGrid, location: TableLocation, columnOrder: ColumnRole[], count: number): number[] {
+  const rows: number[] = [];
+  for (let row = location.dataStartRow; row <= location.dataEndRow && rows.length < count; row++) {
+    if (isBlankRow(readRowValues(raw, location, columnOrder, row))) rows.push(row);
   }
-  return null;
+  return rows;
 }

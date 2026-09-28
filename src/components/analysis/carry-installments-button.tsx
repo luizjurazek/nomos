@@ -37,7 +37,13 @@ export function CarryInstallmentsButton() {
     setItems(null);
     startLoading(async () => {
       try {
-        setItems(await previewPendingInstallments());
+        const { items, error } = await previewPendingInstallments();
+        if (error) {
+          toast.error(`Não foi possível ler as planilhas: ${error}`);
+          setOpen(false);
+          return;
+        }
+        setItems(items);
       } catch {
         toast.error("Não foi possível ler as planilhas.");
         setOpen(false);

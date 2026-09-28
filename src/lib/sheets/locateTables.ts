@@ -41,7 +41,9 @@ function findHeaderRow(
  * Scans downward from `fromRow` for the sequence of "Total..." rows described by `prefixes`,
  * matched against the first column of the block. Real month tabs place consecutive total rows
  * (e.g. "Total pago" then "Total previsto") immediately after one another, so once the first
- * prefix is found we only check the very next row for the second one.
+ * one found is anchored we only check the following rows for the rest of the sequence — but
+ * a tab missing an earlier prefix (e.g. no "Total pago" row) must still anchor on whichever
+ * prefix appears first, or its "Total previsto" row gets read in as a data row.
  */
 function findTotalRows(
   grid: SheetGrid,
@@ -50,19 +52,22 @@ function findTotalRows(
   prefixes: string[],
 ): TotalRowLocation[] {
   if (prefixes.length === 0) return [];
-  const found: TotalRowLocation[] = [];
   let firstRow: number | null = null;
+  let firstIndex = -1;
   for (let row = fromRow; row < grid.length; row++) {
-    if (normalize(grid[row]?.[startCol]).startsWith(prefixes[0])) {
+    const text = normalize(grid[row]?.[startCol]);
+    const index = prefixes.findIndex((prefix) => text.startsWith(prefix));
+    if (index !== -1) {
       firstRow = row;
+      firstIndex = index;
       break;
     }
   }
   if (firstRow === null) return [];
-  found.push({ label: cellText(grid, firstRow, startCol), row: firstRow });
+  const found: TotalRowLocation[] = [{ label: cellText(grid, firstRow, startCol), row: firstRow }];
 
-  for (let i = 1; i < prefixes.length; i++) {
-    const candidateRow = firstRow + i;
+  for (let i = firstIndex + 1; i < prefixes.length; i++) {
+    const candidateRow = firstRow + (i - firstIndex);
     if (normalize(grid[candidateRow]?.[startCol]).startsWith(prefixes[i])) {
       found.push({ label: cellText(grid, candidateRow, startCol), row: candidateRow });
     } else {

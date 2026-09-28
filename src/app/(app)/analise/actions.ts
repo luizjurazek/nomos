@@ -12,8 +12,14 @@ export async function refreshAnalysis(): Promise<void> {
 }
 
 /** What carrying the running installments over would write, without writing anything. */
-export async function previewPendingInstallments(): Promise<PendingInstallment[]> {
-  return planPendingInstallments();
+export async function previewPendingInstallments(): Promise<{ items: PendingInstallment[]; error: string | null }> {
+  try {
+    return { items: await planPendingInstallments(), error: null };
+  } catch (error) {
+    // Server Actions redact thrown errors on the client in production, so the real message has to travel back as data.
+    console.error(error);
+    return { items: [], error: error instanceof Error ? error.message : "Erro desconhecido ao ler as planilhas." };
+  }
 }
 
 /**

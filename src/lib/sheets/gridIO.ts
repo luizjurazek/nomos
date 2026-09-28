@@ -41,6 +41,42 @@ export async function fetchMonthGrids(
   return { formatted, raw };
 }
 
+/**
+ * Same as `fetchMonthGrids`, but for several tabs of one spreadsheet at once: 2 `batchGet` requests
+ * (formatted + raw) instead of 2 per tab, so callers that need N months don't pay N round trips.
+ */
+export async function fetchMonthGridsBatch(
+  spreadsheetId: string,
+  sheetTitles: string[],
+): Promise<Map<string, { formatted: SheetGrid; raw: SheetGrid }>> {
+  if (sheetTitles.length === 0) return new Map();
+  const sheets = getSheetsClient();
+  const ranges = sheetTitles.map((title) => `${quoteSheetTitle(title)}!${GRID_RANGE}`);
+  const [formattedRes, rawRes] = await Promise.all([
+    sheets.spreadsheets.values.batchGet({
+      spreadsheetId,
+      ranges,
+      valueRenderOption: "FORMATTED_VALUE",
+      dateTimeRenderOption: "FORMATTED_STRING",
+    }),
+    sheets.spreadsheets.values.batchGet({
+      spreadsheetId,
+      ranges,
+      valueRenderOption: "UNFORMATTED_VALUE",
+      dateTimeRenderOption: "FORMATTED_STRING",
+    }),
+  ]);
+  return new Map(
+    sheetTitles.map((title, i) => [
+      title,
+      {
+        formatted: (formattedRes.data.valueRanges?.[i]?.values ?? []) as SheetGrid,
+        raw: (rawRes.data.valueRanges?.[i]?.values ?? []) as SheetGrid,
+      },
+    ]),
+  );
+}
+
 export function columnIndexToLetter(index: number): string {
   let n = index + 1;
   let letters = "";
