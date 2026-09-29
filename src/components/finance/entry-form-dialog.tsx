@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { X } from "lucide-react";
 import { toast } from "sonner";
-import { createEntry, createInstallmentEntries, updateEntry } from "@/app/(app)/[year]/[month]/actions";
+import { createEntries, createEntry, createInstallmentEntries, updateEntry, type BatchEntry } from "@/app/(app)/[year]/[month]/actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -19,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CurrencyInput } from "./currency-input";
 import { DateInput } from "./date-input";
 import { TABLE_THEME } from "./table-theme";
+import { formatCurrency } from "@/lib/format/currency";
 import { isValidSheetDate } from "@/lib/format/date";
 import { getMonthNumber } from "@/lib/sheets/monthNames";
 import { CARD_ADJUSTMENT_CATEGORY, TABLE_CONFIGS } from "@/lib/sheets/tableConfigs";
@@ -97,12 +99,44 @@ export function EntryFormDialog({
   // Raw text of the installments field, so it can sit empty while typing (a number state would snap back to 1).
   const [installmentsInput, setInstallmentsInput] = useState("1");
   const installments = Math.max(1, Number(installmentsInput) || 1);
+  // Entries staged via "Adicionar outro", sent together with the current form in one batch on save.
+  const [stagedEntries, setStagedEntries] = useState<BatchEntry[]>([]);
   const [pending, startTransition] = useTransition();
-  const showInstallments = config.bulkInstallments && !isEdit;
+  // Mutually exclusive with staging a batch: one entry becoming several rows (across months) vs.
+  // several different entries becoming one write (same month) are different code paths to combine.
+  const showInstallments = config.bulkInstallments && !isEdit && stagedEntries.length === 0;
+  const canStageAnother = !isEdit && installments <= 1;
   // The currency input can't type a "-": for this category the typed amount is negated on save instead.
   const isCardAdjustment = (tableId === "debitos" || tableId === "nubank") && values.category === CARD_ADJUSTMENT_CATEGORY;
+  const hasDraftContent = String(values.name ?? "").trim().length > 0;
 
   const setField = (role: ColumnRole, value: SheetCell) => setValues((prev) => ({ ...prev, [role]: value }));
+
+  const validate = (): boolean => {
+    if (config.columnOrder.includes("date") && !isValidSheetDate(String(values.date ?? ""))) {
+      toast.error("Informe uma data válida (dd/mm/aaaa).");
+      return false;
+    }
+    if (config.columnOrder.includes("quem") && !values.quem) {
+      toast.error("Selecione quem.");
+      return false;
+    }
+    if (!String(values.name ?? "").trim()) {
+      toast.error("Informe um nome.");
+      return false;
+    }
+    return true;
+  };
+
+  const currentEntryValues = () => (isCardAdjustment ? { ...values, valor: -Math.abs(Number(values.valor ?? 0)) } : values);
+
+  const handleAddAnother = () => {
+    if (!validate()) return;
+    setStagedEntries((prev) => [...prev, { tableId, values: currentEntryValues() }]);
+    setValues(defaultValues(year, month));
+  };
+
+  const removeStaged = (index: number) => setStagedEntries((prev) => prev.filter((_, i) => i !== index));
 
   const selectVoucherTable = (next: TableId) => {
     if (next === tableId) return;
@@ -113,25 +147,23 @@ export function EntryFormDialog({
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (config.columnOrder.includes("date") && !isValidSheetDate(String(values.date ?? ""))) {
-      toast.error("Informe uma data válida (dd/mm/aaaa).");
-      return;
-    }
-    if (config.columnOrder.includes("quem") && !values.quem) {
-      toast.error("Selecione quem.");
-      return;
-    }
-    const submitValues = isCardAdjustment ? { ...values, valor: -Math.abs(Number(values.valor ?? 0)) } : values;
+    // With staged entries, an empty draft just means "nothing more to add" — only validate/include it when filled.
+    const includeDraft = hasDraftContent || stagedEntries.length === 0;
+    if (includeDraft && !validate()) return;
+    const submitValues = currentEntryValues();
     startTransition(async () => {
       try {
         if (isEdit) {
           await updateEntry(year, month, tableId, initialValues!.rowIndex!, submitValues);
+        } else if (stagedEntries.length > 0) {
+          const entries = includeDraft ? [...stagedEntries, { tableId, values: submitValues }] : stagedEntries;
+          await createEntries(year, month, entries);
         } else if (showInstallments && installments > 1) {
           await createInstallmentEntries(year, month, tableId, submitValues, installments);
         } else {
           await createEntry(year, month, tableId, submitValues);
         }
-        toast.success(isEdit ? "Lançamento atualizado." : "Lançamento adicionado.");
+        toast.success(isEdit ? "Lançamento atualizado." : stagedEntries.length > 0 ? "Lançamentos adicionados." : "Lançamento adicionado.");
         onOpenChange(false);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
@@ -177,6 +209,33 @@ export function EntryFormDialog({
               </Select>
             </div>
           )}
+          {stagedEntries.length > 0 && (
+            <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+              <span className="text-xs font-medium text-foreground-secondary">
+                {stagedEntries.length} lançamento{stagedEntries.length > 1 ? "s" : ""} para salvar
+              </span>
+              <ul className="flex flex-col gap-1.5">
+                {stagedEntries.map((entry, index) => (
+                  <li key={index} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="min-w-0 truncate">{String(entry.values.name ?? "")}</span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="tabular-nums text-foreground-secondary">
+                        {formatCurrency(Number(entry.values.valor ?? 0))}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeStaged(index)}
+                        aria-label="Remover"
+                        className="rounded p-0.5 text-foreground-secondary hover:bg-muted hover:text-foreground"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {config.columnOrder.map((role) => (
             <div key={role} className="flex flex-col gap-2">
               {role === "date" && (
@@ -195,7 +254,7 @@ export function EntryFormDialog({
                   <Label htmlFor="name" className="max-sm:text-base">Nome</Label>
                   <Input
                     id="name"
-                    required
+                    required={stagedEntries.length === 0}
                     className="h-11 text-base"
                     value={String(values.name ?? "")}
                     onChange={(event) => setField("name", event.target.value)}
@@ -284,13 +343,28 @@ export function EntryFormDialog({
             </div>
           ))}
           <DialogFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
+            {canStageAnother && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={handleAddAnother}
+                className="h-11 w-full text-base sm:w-auto"
+              >
+                Adicionar outro
+              </Button>
+            )}
             <Button
               type="submit"
               disabled={pending}
               className="h-11 w-full text-base text-white hover:opacity-90 sm:w-auto"
               style={{ backgroundColor: theme.color }}
             >
-              {pending ? "Salvando..." : "Salvar"}
+              {pending
+                ? "Salvando..."
+                : stagedEntries.length > 0
+                  ? `Salvar tudo (${stagedEntries.length + (hasDraftContent ? 1 : 0)})`
+                  : "Salvar"}
             </Button>
           </DialogFooter>
         </form>

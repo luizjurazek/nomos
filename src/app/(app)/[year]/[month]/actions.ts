@@ -2,7 +2,7 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { syncCardRollover } from "@/lib/sheets/cardRollover";
-import { createRow, deleteRow, updateCell, updateRow } from "@/lib/sheets/writeRow";
+import { createRow, createRows, deleteRow, updateCell, updateRow } from "@/lib/sheets/writeRow";
 import { getSpreadsheetId } from "@/lib/sheets/spreadsheetRegistry";
 import { CARD_ADJUSTMENT_CATEGORY } from "@/lib/sheets/tableConfigs";
 import { MONTH_NAMES, getMonthNumber } from "@/lib/sheets/monthNames";
@@ -33,6 +33,49 @@ export async function createEntry(
       quem: valuesByRole.quem,
       valor: valuesByRole.valor,
     });
+  }
+  revalidateMonth(year, month);
+}
+
+export interface BatchEntry {
+  tableId: TableId;
+  values: Partial<Record<ColumnRole, SheetCell>>;
+}
+
+/**
+ * Creates several entries in `month` in as few Sheets calls as possible: entries are grouped by
+ * table and each group goes through `createRows` (one insert `batchUpdate` + one values
+ * `batchUpdate` per table, instead of a read+insert+write round trip per row). Groups are still
+ * written one after another — concurrent inserts into the same tab would shift row indices out
+ * from under each other's already-located blank rows.
+ */
+export async function createEntries(year: string, month: string, entries: BatchEntry[]): Promise<void> {
+  if (entries.length === 0) return;
+  const spreadsheetId = getSpreadsheetId(year);
+
+  const rowsByTable = new Map<TableId, Partial<Record<ColumnRole, SheetCell>>[]>();
+  const addRow = (tableId: TableId, values: Partial<Record<ColumnRole, SheetCell>>) => {
+    const rows = rowsByTable.get(tableId) ?? [];
+    rows.push(values);
+    rowsByTable.set(tableId, rows);
+  };
+
+  for (const entry of entries) {
+    addRow(entry.tableId, entry.values);
+    // Same mirroring as createEntry: a card discount also gets a matching negative line in Nubank.
+    if (entry.tableId === "debitos" && entry.values.category === CARD_ADJUSTMENT_CATEGORY) {
+      addRow("nubank", {
+        date: entry.values.date,
+        name: entry.values.name,
+        category: CARD_ADJUSTMENT_CATEGORY,
+        quem: entry.values.quem,
+        valor: entry.values.valor,
+      });
+    }
+  }
+
+  for (const [tableId, rows] of rowsByTable) {
+    await createRows(spreadsheetId, month, tableId, rows);
   }
   revalidateMonth(year, month);
 }
