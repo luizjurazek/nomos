@@ -34,7 +34,7 @@ export const TABLE_CONFIGS: Record<TableId, TableTypeConfig> = {
     totalRowPrefixes: ["total recebido", "total previsto"],
     categoryListKey: "Entradas",
     installmentParsing: true,
-    bulkInstallments: false,
+    bulkInstallments: true,
     semanticTags: [{ category: "Res. Emergência", tag: "transferenciaReserva" }],
     checkboxLabel: "Recebido",
   },
@@ -48,7 +48,7 @@ export const TABLE_CONFIGS: Record<TableId, TableTypeConfig> = {
     totalRowPrefixes: ["total pago", "total previsto"],
     categoryListKey: "Saidas",
     installmentParsing: true,
-    bulkInstallments: false,
+    bulkInstallments: true,
     // Money set aside, not spent: both categories are savings when they show up as a débito.
     semanticTags: [
       { category: "Investimentos", tag: "poupanca" },
