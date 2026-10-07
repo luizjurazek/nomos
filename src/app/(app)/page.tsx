@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
-import { listMonths } from "@/lib/sheets/listMonths";
+import { listMonthsCached } from "@/lib/sheets/listMonths";
 import { getCurrentYearMonth, pickLandingMonth } from "@/lib/sheets/monthNames";
 import { getSpreadsheetId, listAvailableYears } from "@/lib/sheets/spreadsheetRegistry";
 
@@ -14,7 +14,7 @@ export default async function AppIndexPage() {
   const year = years.includes(String(current.year)) ? String(current.year) : years[years.length - 1];
   if (!year) notFound();
 
-  const months = await listMonths(getSpreadsheetId(year));
+  const months = await listMonthsCached(getSpreadsheetId(year));
   // A year other than the current one (no sheet configured for it yet) lands on its last month.
   const targetMonthIndex = year === String(current.year) ? current.monthIndex : Number.MAX_SAFE_INTEGER - 1;
   const month = pickLandingMonth(months, targetMonthIndex);

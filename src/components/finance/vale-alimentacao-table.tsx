@@ -54,6 +54,7 @@ export function ValeAlimentacaoTable({
             rows={optimisticCredito}
             filterable
             memoryKey="vale-credito"
+            status={{ isDone: (row) => row.recebido, doneLabel: "Recebido", pendingLabel: "A receber" }}
             stats={(list) => checkedStats(list, (row) => row.recebido, { done: "Recebido", pending: "A receber" })}
             emptyMessage="Nada recebido ainda."
             renderRow={(row) => (
@@ -83,6 +84,7 @@ export function ValeAlimentacaoTable({
             rows={optimisticConsumo}
             filterable
             memoryKey="vale-consumo"
+            status={{ isDone: (row) => row.pago, doneLabel: "Gasto", pendingLabel: "A pagar" }}
             stats={(list) => checkedStats(list, (row) => row.pago, { done: "Gasto", pending: "A pagar" })}
             emptyMessage="Nenhum gasto ainda."
             renderRow={(row) => (

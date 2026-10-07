@@ -33,10 +33,11 @@ async function readCategories(spreadsheetId: string): Promise<Categories> {
 
 /**
  * Reads the "Dados" tab's two category columns (Entradas / Saidas), used to populate category
- * dropdowns. Cached for 5 minutes: this is read on every month-page view, but the category list
- * itself barely ever changes, and the Sheets API read quota is shared by everyone using the app.
+ * dropdowns. Cached for an hour: this is read on every month-page view, but the category list
+ * itself barely ever changes (a few times a year), and the Sheets API read quota is shared by
+ * everyone using the app. The "Atualizar" button on /analise drops it right away via the tag.
  */
 export const getCategories = unstable_cache(readCategories, ["categories"], {
   tags: [CATEGORIES_CACHE_TAG],
-  revalidate: 300,
+  revalidate: 3600,
 });
