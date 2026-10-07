@@ -1,15 +1,14 @@
 import "server-only";
 import { getSheetsClient, RETRY_POST_OPTIONS } from "./client";
-import { columnIndexToLetter, fetchMonthGrids, quoteSheetTitle } from "./gridIO";
-import { locateTables } from "./locateTables";
+import { columnIndexToLetter, quoteSheetTitle } from "./gridIO";
+import { getCachedLocation, invalidateLocation } from "./locateTableCache";
 import { findBlankRows } from "./rowExtraction";
 import { getSheetIdByTitle } from "./sheetMeta";
 import { TABLE_CONFIGS } from "./tableConfigs";
 import type { ColumnRole, SheetCell, TableId, TableLocation } from "./types";
 
-async function locateTable(spreadsheetId: string, monthTitle: string, tableId: TableId) {
-  const { formatted, raw } = await fetchMonthGrids(spreadsheetId, monthTitle);
-  const located = locateTables(formatted);
+async function locateTable(spreadsheetId: string, monthTitle: string, tableId: TableId, options?: { fresh?: boolean }) {
+  const { raw, located } = await getCachedLocation(spreadsheetId, monthTitle, options);
   const location = located[tableId];
   if (!location) {
     throw new Error(`Couldn't find the "${TABLE_CONFIGS[tableId].label}" table in "${monthTitle}". Check the sheet's layout.`);
@@ -84,28 +83,34 @@ export async function createRows(
 ): Promise<number[]> {
   if (rows.length === 0) return [];
   const config = TABLE_CONFIGS[tableId];
-  const { raw, location } = await locateTable(spreadsheetId, monthTitle, tableId);
+  // Blank-slot detection reads cell contents, so never trust a cached grid here.
+  const { raw, location } = await locateTable(spreadsheetId, monthTitle, tableId, { fresh: true });
 
-  const blankRows = findBlankRows(raw, location, config.columnOrder, rows.length);
-  const insertedRows = rows.length > blankRows.length ? await insertBlankRows(spreadsheetId, monthTitle, location, rows.length - blankRows.length) : [];
-  const targetRows = [...blankRows, ...insertedRows];
+  try {
+    const blankRows = findBlankRows(raw, location, config.columnOrder, rows.length);
+    const insertedRows = rows.length > blankRows.length ? await insertBlankRows(spreadsheetId, monthTitle, location, rows.length - blankRows.length) : [];
+    const targetRows = [...blankRows, ...insertedRows];
 
-  const sheets = getSheetsClient();
-  await sheets.spreadsheets.values.batchUpdate(
-    {
-      spreadsheetId,
-      requestBody: {
-        valueInputOption: "USER_ENTERED",
-        data: targetRows.map((row, i) => ({
-          range: rowRange(monthTitle, location, config.columnOrder, row),
-          values: [toRowValues(config.columnOrder, rows[i])],
-        })),
+    const sheets = getSheetsClient();
+    await sheets.spreadsheets.values.batchUpdate(
+      {
+        spreadsheetId,
+        requestBody: {
+          valueInputOption: "USER_ENTERED",
+          data: targetRows.map((row, i) => ({
+            range: rowRange(monthTitle, location, config.columnOrder, row),
+            values: [toRowValues(config.columnOrder, rows[i])],
+          })),
+        },
       },
-    },
-    RETRY_POST_OPTIONS,
-  );
+      RETRY_POST_OPTIONS,
+    );
 
-  return targetRows;
+    return targetRows;
+  } finally {
+    // Even a partial failure (rows inserted, values not written) shifts positions.
+    invalidateLocation(spreadsheetId, monthTitle);
+  }
 }
 
 /** Creates a single new entry in the given table — see `createRows` for how the slot is picked. */
@@ -130,13 +135,17 @@ export async function updateRow(
   const config = TABLE_CONFIGS[tableId];
   const { location } = await locateTable(spreadsheetId, monthTitle, tableId);
 
-  const sheets = getSheetsClient();
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: rowRange(monthTitle, location, config.columnOrder, rowIndex),
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [toRowValues(config.columnOrder, valuesByRole)] },
-  });
+  try {
+    const sheets = getSheetsClient();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: rowRange(monthTitle, location, config.columnOrder, rowIndex),
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [toRowValues(config.columnOrder, valuesByRole)] },
+    });
+  } finally {
+    invalidateLocation(spreadsheetId, monthTitle);
+  }
 }
 
 /** Updates a single field (e.g. toggling the Pago/Recebido checkbox) with a minimal single-cell write. */
@@ -151,6 +160,7 @@ export async function updateCell(
   const config = TABLE_CONFIGS[tableId];
   const { location } = await locateTable(spreadsheetId, monthTitle, tableId);
 
+  // A single-cell write doesn't shift table positions, so the cached location stays valid (createRows always reads fresh).
   const sheets = getSheetsClient();
   await sheets.spreadsheets.values.update({
     spreadsheetId,
@@ -170,11 +180,15 @@ export async function deleteRow(
   const config = TABLE_CONFIGS[tableId];
   const { location } = await locateTable(spreadsheetId, monthTitle, tableId);
 
-  const sheets = getSheetsClient();
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: rowRange(monthTitle, location, config.columnOrder, rowIndex),
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [toRowValues(config.columnOrder, {})] },
-  });
+  try {
+    const sheets = getSheetsClient();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: rowRange(monthTitle, location, config.columnOrder, rowIndex),
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [toRowValues(config.columnOrder, {})] },
+    });
+  } finally {
+    invalidateLocation(spreadsheetId, monthTitle);
+  }
 }
