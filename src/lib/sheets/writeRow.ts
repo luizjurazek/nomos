@@ -1,9 +1,10 @@
 import "server-only";
 import { getSheetsClient, RETRY_POST_OPTIONS } from "./client";
-import { columnIndexToLetter, quoteSheetTitle } from "./gridIO";
+import { columnIndexToLetter, fetchMonthGridsBatch, quoteSheetTitle } from "./gridIO";
 import { getCachedLocation, invalidateLocation } from "./locateTableCache";
+import { locateTables } from "./locateTables";
 import { findBlankRows } from "./rowExtraction";
-import { getSheetIdByTitle } from "./sheetMeta";
+import { getSheetIdByTitle, getSheetIdsByTitle } from "./sheetMeta";
 import { TABLE_CONFIGS } from "./tableConfigs";
 import type { ColumnRole, SheetCell, TableId, TableLocation } from "./types";
 
@@ -110,6 +111,90 @@ export async function createRows(
   } finally {
     // Even a partial failure (rows inserted, values not written) shifts positions.
     invalidateLocation(spreadsheetId, monthTitle);
+  }
+}
+
+/**
+ * Creates one new entry per month tab, all in the same table, in a fixed number of Sheets calls
+ * regardless of how many months there are: one `batchGet` pair to read every tab, at most one
+ * structural `batchUpdate` (one `insertDimension` per tab that has no blank slot) and one
+ * `values.batchUpdate` for every row. Inserting rows across tabs in one request is safe because
+ * each tab has its own row indices — unlike several inserts into the same tab (see `createRows`).
+ * The values write is atomic, so either every row is created or none is; the only leftover from a
+ * failure is blank inserted rows, which later creations reuse as slots. `entries` must name each
+ * month at most once. Returns the written row per month.
+ */
+export async function createRowsAcrossMonths(
+  spreadsheetId: string,
+  tableId: TableId,
+  entries: { monthTitle: string; values: Partial<Record<ColumnRole, SheetCell>> }[],
+): Promise<{ monthTitle: string; row: number }[]> {
+  if (entries.length === 0) return [];
+  const config = TABLE_CONFIGS[tableId];
+  const months = entries.map((entry) => entry.monthTitle);
+  if (new Set(months).size !== months.length) {
+    throw new Error("createRowsAcrossMonths expects each month at most once.");
+  }
+
+  try {
+    // A missing tab fails this read, before anything is written.
+    const grids = await fetchMonthGridsBatch(spreadsheetId, months);
+
+    const plans = entries.map((entry) => {
+      const { formatted, raw } = grids.get(entry.monthTitle)!;
+      const location = locateTables(formatted)[tableId];
+      if (!location) {
+        throw new Error(`Couldn't find the "${config.label}" table in "${entry.monthTitle}". Check the sheet's layout.`);
+      }
+      const [blankRow] = findBlankRows(raw, location, config.columnOrder, 1);
+      return { entry, location, blankRow };
+    });
+
+    const needInsert = plans.filter((plan) => plan.blankRow === undefined);
+    const insertedRows = new Map<string, number>();
+    if (needInsert.length > 0) {
+      const sheets = getSheetsClient();
+      const sheetIds = await getSheetIdsByTitle(spreadsheetId);
+      const requests = needInsert.map(({ entry, location }) => {
+        const sheetId = sheetIds.get(entry.monthTitle);
+        if (sheetId === undefined) throw new Error(`Tab "${entry.monthTitle}" not found in spreadsheet ${spreadsheetId}.`);
+        const insertAt = location.totalRows.length > 0 ? location.totalRows[0].row : location.dataEndRow + 1;
+        insertedRows.set(entry.monthTitle, insertAt);
+        return {
+          insertDimension: {
+            range: { sheetId, dimension: "ROWS", startIndex: insertAt, endIndex: insertAt + 1 },
+            inheritFromBefore: true,
+          },
+        };
+      });
+      await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } }, RETRY_POST_OPTIONS);
+    }
+
+    const targets = plans.map(({ entry, location, blankRow }) => ({
+      monthTitle: entry.monthTitle,
+      values: entry.values,
+      location,
+      row: blankRow ?? insertedRows.get(entry.monthTitle)!,
+    }));
+
+    const sheets = getSheetsClient();
+    await sheets.spreadsheets.values.batchUpdate(
+      {
+        spreadsheetId,
+        requestBody: {
+          valueInputOption: "USER_ENTERED",
+          data: targets.map((target) => ({
+            range: rowRange(target.monthTitle, target.location, config.columnOrder, target.row),
+            values: [toRowValues(config.columnOrder, target.values)],
+          })),
+        },
+      },
+      RETRY_POST_OPTIONS,
+    );
+
+    return targets.map(({ monthTitle, row }) => ({ monthTitle, row }));
+  } finally {
+    for (const month of months) invalidateLocation(spreadsheetId, month);
   }
 }
 

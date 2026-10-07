@@ -2,7 +2,7 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { syncCardRollover } from "@/lib/sheets/cardRollover";
-import { createRow, createRows, deleteRow, updateCell, updateRow } from "@/lib/sheets/writeRow";
+import { createRow, createRows, createRowsAcrossMonths, deleteRow, updateCell, updateRow } from "@/lib/sheets/writeRow";
 import { getSpreadsheetId } from "@/lib/sheets/spreadsheetRegistry";
 import { CARD_ADJUSTMENT_CATEGORY } from "@/lib/sheets/tableConfigs";
 import { MONTH_NAMES, getMonthNumber } from "@/lib/sheets/monthNames";
@@ -84,7 +84,9 @@ export async function createEntries(year: string, month: string, entries: BatchE
  * Creates one row per installment, starting at `month`, each named "<name> (i/N)" following
  * the existing convention that `parseInstallment` reads back on the month pages. `valuesByRole`
  * already carries the per-installment value (not the purchase total) — it's copied as-is onto
- * every row, only `name` and `date` change per installment.
+ * every row, only `name` and `date` change per installment. All rows go out in one batched,
+ * atomic write (each installment lives in a different tab), so a failure never leaves a plan
+ * half created.
  *
  * Attention point: a plan that would run past Dezembro isn't supported yet, because each year
  * lives in its own spreadsheet (see spreadsheetRegistry.ts) and the next year's tabs may not
@@ -116,14 +118,19 @@ export async function createInstallmentEntries(
   const baseDate = parseSheetDate(String(valuesByRole.date ?? ""));
   const targetMonths = MONTH_NAMES.slice(startIndex, startIndex + installments);
 
-  for (const [i, targetMonth] of targetMonths.entries()) {
-    const date = baseDate ? formatSheetDate({ ...baseDate, month: getMonthNumber(targetMonth) }) : valuesByRole.date;
-    await createRow(spreadsheetId, targetMonth, tableId, {
-      ...valuesByRole,
-      name: `${baseName} (${i + 1}/${installments})`,
-      date,
-    });
-  }
+  // One entry per month tab, written in a single batch (all or nothing) — see createRowsAcrossMonths.
+  await createRowsAcrossMonths(
+    spreadsheetId,
+    tableId,
+    targetMonths.map((targetMonth, i) => ({
+      monthTitle: targetMonth,
+      values: {
+        ...valuesByRole,
+        name: `${baseName} (${i + 1}/${installments})`,
+        date: baseDate ? formatSheetDate({ ...baseDate, month: getMonthNumber(targetMonth) }) : valuesByRole.date,
+      },
+    })),
+  );
 
   targetMonths.forEach((targetMonth) => revalidateMonth(year, targetMonth));
 }
