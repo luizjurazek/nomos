@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SAVINGS_COLOR } from "@/components/analysis/colors";
 import { shortRefLabel } from "@/components/analysis/labels";
 import { formatCurrency } from "@/lib/format/currency";
@@ -27,6 +27,24 @@ interface SummarySection {
 /** Collapsible month summary (closed by default): every KPI grouped by section, each row with a colored dot. */
 export function MonthSummaryDropdown({ kpis, savings }: { kpis: MonthKpis; savings: SavingsSummary }) {
   const [open, setOpen] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const headerRef = useRef<HTMLButtonElement>(null);
+  // Room left in the viewport below the header, so the open list fits the first screen and scrolls inside.
+  const [maxListHeight, setMaxListHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      const section = sectionRef.current;
+      const header = headerRef.current;
+      if (!section || !header) return;
+      const room = window.innerHeight - section.getBoundingClientRect().top - header.offsetHeight - 16;
+      setMaxListHeight(Math.max(160, Math.floor(room)));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [open]);
 
   const vaColor = TABLE_HEADER_COLORS.valeAlimentacaoConsumo;
   const sections: SummarySection[] = [
@@ -81,8 +99,9 @@ export function MonthSummaryDropdown({ kpis, savings }: { kpis: MonthKpis; savin
 
   return (
     // From lg the section may shrink inside the capped sidebar; its content then scrolls on its own.
-    <section className="glass-surface flex min-h-0 shrink flex-col overflow-hidden rounded-2xl border border-border">
+    <section ref={sectionRef} className="glass-surface flex min-h-0 shrink flex-col overflow-hidden rounded-2xl border border-border">
       <button
+        ref={headerRef}
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
@@ -94,7 +113,10 @@ export function MonthSummaryDropdown({ kpis, savings }: { kpis: MonthKpis; savin
         />
       </button>
       {open && (
-        <div className="min-h-0 divide-y divide-border overflow-y-auto border-t border-border [scrollbar-width:thin]">
+        <div
+          className="min-h-0 divide-y divide-border overflow-y-auto border-t border-border [scrollbar-width:thin]"
+          style={maxListHeight ? { maxHeight: maxListHeight } : undefined}
+        >
           {sections.map((section) => (
             <div key={section.title} className="px-4 py-3">
               <div className="mb-2 flex items-baseline justify-between gap-3">

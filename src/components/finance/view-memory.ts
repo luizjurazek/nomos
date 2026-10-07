@@ -10,9 +10,10 @@ export interface ListFilters {
   query: string;
   category: string;
   quem: string;
+  status: "" | "pending" | "done";
 }
 
-const NO_FILTERS: ListFilters = { query: "", category: "", quem: "" };
+const NO_FILTERS: ListFilters = { query: "", category: "", quem: "", status: "" };
 
 let rememberedTab: TableSlug | null = null;
 const rememberedFilters = new Map<string, ListFilters>();
