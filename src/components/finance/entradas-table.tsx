@@ -34,6 +34,7 @@ export function EntradasTable({
         rows={optimisticRows}
         filterable
         memoryKey="entradas"
+        status={{ isDone: (row) => row.recebido, doneLabel: "Recebido", pendingLabel: "A receber" }}
         stats={(list) => checkedStats(list, (row) => row.recebido, { done: "Recebido", pending: "A receber" })}
         emptyMessage="Nenhum lançamento ainda."
         renderRow={(row) => (

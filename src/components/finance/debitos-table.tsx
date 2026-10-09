@@ -35,6 +35,7 @@ export function DebitosTable({
         rows={optimisticRows}
         filterable
         memoryKey="debitos"
+        status={{ isDone: (row) => row.pago, doneLabel: "Pago", pendingLabel: "A pagar" }}
         stats={(list) => checkedStats(list, (row) => row.pago, { done: "Pago", pending: "A pagar" })}
         emptyMessage="Nenhum lançamento ainda."
         renderRow={(row) => (

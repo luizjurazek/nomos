@@ -2,7 +2,7 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { syncCardRollover } from "@/lib/sheets/cardRollover";
-import { createRow, deleteRow, updateCell, updateRow } from "@/lib/sheets/writeRow";
+import { createRow, createRows, createRowsAcrossMonths, deleteRow, updateCell, updateRow } from "@/lib/sheets/writeRow";
 import { getSpreadsheetId } from "@/lib/sheets/spreadsheetRegistry";
 import { CARD_ADJUSTMENT_CATEGORY } from "@/lib/sheets/tableConfigs";
 import { MONTH_NAMES, getMonthNumber } from "@/lib/sheets/monthNames";
@@ -37,11 +37,56 @@ export async function createEntry(
   revalidateMonth(year, month);
 }
 
+export interface BatchEntry {
+  tableId: TableId;
+  values: Partial<Record<ColumnRole, SheetCell>>;
+}
+
+/**
+ * Creates several entries in `month` in as few Sheets calls as possible: entries are grouped by
+ * table and each group goes through `createRows` (one insert `batchUpdate` + one values
+ * `batchUpdate` per table, instead of a read+insert+write round trip per row). Groups are still
+ * written one after another — concurrent inserts into the same tab would shift row indices out
+ * from under each other's already-located blank rows.
+ */
+export async function createEntries(year: string, month: string, entries: BatchEntry[]): Promise<void> {
+  if (entries.length === 0) return;
+  const spreadsheetId = getSpreadsheetId(year);
+
+  const rowsByTable = new Map<TableId, Partial<Record<ColumnRole, SheetCell>>[]>();
+  const addRow = (tableId: TableId, values: Partial<Record<ColumnRole, SheetCell>>) => {
+    const rows = rowsByTable.get(tableId) ?? [];
+    rows.push(values);
+    rowsByTable.set(tableId, rows);
+  };
+
+  for (const entry of entries) {
+    addRow(entry.tableId, entry.values);
+    // Same mirroring as createEntry: a card discount also gets a matching negative line in Nubank.
+    if (entry.tableId === "debitos" && entry.values.category === CARD_ADJUSTMENT_CATEGORY) {
+      addRow("nubank", {
+        date: entry.values.date,
+        name: entry.values.name,
+        category: CARD_ADJUSTMENT_CATEGORY,
+        quem: entry.values.quem,
+        valor: entry.values.valor,
+      });
+    }
+  }
+
+  for (const [tableId, rows] of rowsByTable) {
+    await createRows(spreadsheetId, month, tableId, rows);
+  }
+  revalidateMonth(year, month);
+}
+
 /**
  * Creates one row per installment, starting at `month`, each named "<name> (i/N)" following
  * the existing convention that `parseInstallment` reads back on the month pages. `valuesByRole`
  * already carries the per-installment value (not the purchase total) — it's copied as-is onto
- * every row, only `name` and `date` change per installment.
+ * every row, only `name` and `date` change per installment. All rows go out in one batched,
+ * atomic write (each installment lives in a different tab), so a failure never leaves a plan
+ * half created.
  *
  * Attention point: a plan that would run past Dezembro isn't supported yet, because each year
  * lives in its own spreadsheet (see spreadsheetRegistry.ts) and the next year's tabs may not
@@ -73,14 +118,19 @@ export async function createInstallmentEntries(
   const baseDate = parseSheetDate(String(valuesByRole.date ?? ""));
   const targetMonths = MONTH_NAMES.slice(startIndex, startIndex + installments);
 
-  for (const [i, targetMonth] of targetMonths.entries()) {
-    const date = baseDate ? formatSheetDate({ ...baseDate, month: getMonthNumber(targetMonth) }) : valuesByRole.date;
-    await createRow(spreadsheetId, targetMonth, tableId, {
-      ...valuesByRole,
-      name: `${baseName} (${i + 1}/${installments})`,
-      date,
-    });
-  }
+  // One entry per month tab, written in a single batch (all or nothing) — see createRowsAcrossMonths.
+  await createRowsAcrossMonths(
+    spreadsheetId,
+    tableId,
+    targetMonths.map((targetMonth, i) => ({
+      monthTitle: targetMonth,
+      values: {
+        ...valuesByRole,
+        name: `${baseName} (${i + 1}/${installments})`,
+        date: baseDate ? formatSheetDate({ ...baseDate, month: getMonthNumber(targetMonth) }) : valuesByRole.date,
+      },
+    })),
+  );
 
   targetMonths.forEach((targetMonth) => revalidateMonth(year, targetMonth));
 }

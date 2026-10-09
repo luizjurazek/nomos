@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { fetchMonthGrids } from "./gridIO";
 import { getMonthNumber, getPreviousMonthRef, listMonths } from "./listMonths";
 import { locateTables } from "./locateTables";
@@ -14,7 +15,26 @@ import { createRow, updateCell } from "./writeRow";
 import { toNumber } from "../format/currency";
 import { UNKNOWN_DAY_PLACEHOLDER } from "../format/date";
 
-/** Sums the previous month's Nubank table, resolving across a year boundary when needed (Janeiro looks at the prior year's spreadsheet). Returns null when there's no previous month to roll over from (e.g. the first migrated month, or the previous spreadsheet/tab doesn't exist yet). */
+/** Reads and sums the Nubank table of the given previous-month tab. Returns null when the tab or table doesn't exist. */
+async function sumPreviousMonthNubankUncached(
+  previousSpreadsheetId: string,
+  previousMonth: string,
+): Promise<number | null> {
+  const previousMonths = await listMonths(previousSpreadsheetId);
+  if (!previousMonths.includes(previousMonth)) return null;
+
+  const { formatted, raw } = await fetchMonthGrids(previousSpreadsheetId, previousMonth);
+  const located = locateTables(formatted);
+  if (!located.nubank) return null;
+
+  const rows = extractRawRows(raw, located.nubank, TABLE_CONFIGS.nubank.columnOrder);
+  return rows.reduce((acc, row) => acc + toNumber(row.values.valor), 0);
+}
+
+/**
+ * Sums the previous month's Nubank table, resolving across a year boundary when needed (Janeiro looks at the prior year's spreadsheet). Returns null when there's no previous month to roll over from (e.g. the first migrated month, or the previous spreadsheet/tab doesn't exist yet).
+ * Cached briefly per (previous spreadsheet, previous month) with no invalidation tag: the previous month rarely changes and the short TTL covers edits. Only this read is cached — the current month's grid in `syncCardRollover` must stay uncached.
+ */
 async function sumPreviousMonthNubank(year: string, monthTitle: string): Promise<number | null> {
   const previous = getPreviousMonthRef(year, monthTitle);
   if (!previous) return null;
@@ -26,15 +46,11 @@ async function sumPreviousMonthNubank(year: string, monthTitle: string): Promise
     return null;
   }
 
-  const previousMonths = await listMonths(previousSpreadsheetId);
-  if (!previousMonths.includes(previous.month)) return null;
-
-  const { formatted, raw } = await fetchMonthGrids(previousSpreadsheetId, previous.month);
-  const located = locateTables(formatted);
-  if (!located.nubank) return null;
-
-  const rows = extractRawRows(raw, located.nubank, TABLE_CONFIGS.nubank.columnOrder);
-  return rows.reduce((acc, row) => acc + toNumber(row.values.valor), 0);
+  return unstable_cache(
+    () => sumPreviousMonthNubankUncached(previousSpreadsheetId, previous.month),
+    ["prev-month-nubank-total", previousSpreadsheetId, previous.month],
+    { revalidate: 30 },
+  )();
 }
 
 /**
