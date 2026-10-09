@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { freedByMonth, installmentsByBill, listInstallmentPlans, listLedgerPlans, summarizePlans, upcomingBills } from "@/lib/analysis/installments";
 import { refFromKey, type Now } from "@/lib/analysis/months";
-import { currentKeyOf, pointsInRange, rangeOptions, type RangeId } from "@/lib/analysis/ranges";
+import { currentKeyOf, customRangeLabel, DEFAULT_RANGE, isCustomRange, pointsInRange, rangeOptions, type RangeId } from "@/lib/analysis/ranges";
 import { buildTimeline, pickReferenceMonth, summarizePeriod, viewPoints } from "@/lib/analysis/timeline";
 import type { AnalysisMonth } from "@/lib/analysis/types";
 import { CategoryBreakdown } from "./category-breakdown";
@@ -26,10 +26,10 @@ interface AnalysisViewProps {
 }
 
 export function AnalysisView({ months, now, initialBalance }: AnalysisViewProps) {
-  const [range, setRange] = useState<RangeId>("year");
-  const [pickedKey, setPickedKey] = useState<string | null>(null);
-  // The current month is in focus by default; "all months" is one tap away in the filters.
-  const [scope, setScope] = useState<Scope>("month");
+  // One period for the whole page: summary, chart, table and categories all follow it.
+  const [range, setRange] = useState<RangeId>(DEFAULT_RANGE);
+  // Only a highlight (chart tooltip, category bars): never a filter, so it does not change any figure.
+  const [highlightKey, setHighlightKey] = useState<string | null>(null);
   // Day to day by default; with savings the numbers are the sheet's own (see viewPoint).
   const [withSavings, setWithSavings] = useState(false);
 
@@ -38,37 +38,19 @@ export function AnalysisView({ months, now, initialBalance }: AnalysisViewProps)
   const ranges = useMemo(() => rangeOptions(timeline, now), [timeline, now]);
   const visible = useMemo(() => pointsInRange(timeline, range, now), [timeline, range, now]);
 
-  // Choosing a period means looking at the period: every month of it, with any earlier month pick dropped.
   const changeRange = (next: RangeId) => {
     setRange(next);
-    setPickedKey(null);
-    setScope("period");
+    setHighlightKey(null);
   };
-  // Back to the default view: the default month in focus, savings left out. The period itself is not a filter, so it stays.
   const resetFilters = () => {
-    setPickedKey(null);
-    setScope("month");
+    changeRange(DEFAULT_RANGE);
     setWithSavings(false);
   };
-  // Picking a month anywhere (filter, chart, table, categories) focuses the summary and the categories on it.
-  const focusMonth = (key: string | null) => {
-    if (key === null) {
-      setScope("period");
-      return;
-    }
-    setPickedKey(key);
-    setScope("month");
-  };
 
-  // Default month: the current one, else the closest tab before it.
-  const defaultKey = useMemo(() => {
-    if (visible.some((point) => point.key === currentKey)) return currentKey;
-    const sheet = visible.filter((point) => point.source === "sheet");
-    return (sheet.filter((point) => point.key <= currentKey).at(-1) ?? sheet[0] ?? visible[0])?.key ?? null;
-  }, [visible, currentKey]);
-  // The picked month wins while it is on screen.
-  const selectedKey = pickedKey && visible.some((point) => point.key === pickedKey) ? pickedKey : defaultKey;
-  const filtered = withSavings || scope === "period" || selectedKey !== defaultKey;
+  // One month is looked at in detail; several, as a whole.
+  const scope: Scope = visible.length === 1 ? "month" : "period";
+  const selectedKey = scope === "month" ? visible[0].key : highlightKey && visible.some((point) => point.key === highlightKey) ? highlightKey : null;
+  const filtered = withSavings || range !== DEFAULT_RANGE;
 
   const summary = useMemo(() => summarizePeriod(visible, withSavings), [visible, withSavings]);
   const shown = useMemo(() => viewPoints(visible, withSavings), [visible, withSavings]);
@@ -76,8 +58,8 @@ export function AnalysisView({ months, now, initialBalance }: AnalysisViewProps)
   // Months of the period with a tab: the only ones that have categories.
   const periodKeys = useMemo(() => visible.filter((point) => point.source === "sheet").map((point) => point.key), [visible]);
   const projectedKeys = useMemo(() => new Set(visible.filter((point) => point.projected).map((point) => point.key)), [visible]);
-  const periodLabel = ranges.find((option) => option.id === range)?.label ?? "";
-  const monthLabel = selectedKey ? refLabel(refFromKey(selectedKey)) : null;
+  const periodLabel = isCustomRange(range) ? customRangeLabel(range) : (ranges.find((option) => option.id === range)?.label ?? "");
+  const monthLabel = scope === "month" && selectedKey ? refLabel(refFromKey(selectedKey)) : null;
 
   const reference = useMemo(() => pickReferenceMonth(months, now), [months, now]);
   const plans = useMemo(() => (reference ? listInstallmentPlans(reference) : []), [reference]);
@@ -95,7 +77,9 @@ export function AnalysisView({ months, now, initialBalance }: AnalysisViewProps)
           <p className="text-sm text-foreground-secondary">
             {timeline.length === 0 || visible.length === 0
               ? "Projeção mês a mês e categorias"
-              : `${periodLabel} · ${scope === "month" && monthLabel ? monthLabel : "todos os meses"}`}
+              : monthLabel && monthLabel !== periodLabel
+                ? `${periodLabel} · ${monthLabel}`
+                : `${periodLabel} · ${visible.length} ${visible.length === 1 ? "mês" : "meses"}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -111,37 +95,46 @@ export function AnalysisView({ months, now, initialBalance }: AnalysisViewProps)
       ) : (
         <>
           {visible.length === 0 ? (
-            <p className="rounded-2xl border border-border bg-card px-4 py-6 text-sm text-foreground-secondary">
-              Não há meses neste período.
-            </p>
+            <p className="rounded-2xl border border-border bg-card px-4 py-6 text-sm text-foreground-secondary">Não há meses neste período.</p>
           ) : (
             <>
               <section className="flex flex-col gap-3">
-                <SectionHeader title="Resumo" scope={scope === "month" && monthLabel ? monthLabel : periodLabel} />
+                <SectionHeader title="Resumo" scope={monthLabel ?? periodLabel} />
                 <SummaryCards scope={scope} summary={summary} point={selectedPoint} withSavings={withSavings} initialBalance={initialBalance} />
               </section>
               <section className="flex flex-col gap-3">
-                <SectionHeader title="Evolução mês a mês" scope={`${periodLabel} · mês escolhido em destaque`} />
-                <MonthlyChart points={shown} selectedKey={selectedKey} onSelect={focusMonth} withSavings={withSavings} initialBalance={initialBalance} />
+                <SectionHeader title="Evolução mês a mês" scope={periodLabel} />
+                <MonthlyChart
+                  points={shown}
+                  selectedKey={selectedKey}
+                  onSelect={setHighlightKey}
+                  withSavings={withSavings}
+                  initialBalance={initialBalance}
+                />
               </section>
               {/* Each section takes the full width, one after the other. */}
               <div className="flex flex-col gap-5">
-                {selectedKey && (
-                  <div>
-                    <CategoryBreakdown
-                      months={months}
-                      selectedKey={selectedKey}
-                      onSelectMonth={focusMonth}
-                      scope={scope}
-                      periodKeys={periodKeys}
-                      periodLabel={periodLabel}
-                      projectedKeys={projectedKeys}
-                      withSavings={withSavings}
-                    />
-                  </div>
-                )}
                 <div>
-                  <InstallmentsPanel bills={bills} plans={plans} ledgerPlans={ledgerPlans} freed={freed} installmentBills={installmentBills} totals={plansTotals} />
+                  <CategoryBreakdown
+                    months={months}
+                    selectedKey={selectedKey}
+                    onSelectMonth={setHighlightKey}
+                    scope={scope}
+                    periodKeys={periodKeys}
+                    periodLabel={periodLabel}
+                    projectedKeys={projectedKeys}
+                    withSavings={withSavings}
+                  />
+                </div>
+                <div>
+                  <InstallmentsPanel
+                    bills={bills}
+                    plans={plans}
+                    ledgerPlans={ledgerPlans}
+                    freed={freed}
+                    installmentBills={installmentBills}
+                    totals={plansTotals}
+                  />
                 </div>
               </div>
             </>
@@ -153,10 +146,8 @@ export function AnalysisView({ months, now, initialBalance }: AnalysisViewProps)
           ranges={ranges}
           range={range}
           onRange={changeRange}
-          points={visible}
-          scope={scope}
-          selectedKey={selectedKey}
-          onMonth={focusMonth}
+          timeline={timeline}
+          visible={visible}
           filtered={filtered}
           onReset={resetFilters}
           withSavings={withSavings}

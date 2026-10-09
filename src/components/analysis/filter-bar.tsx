@@ -5,24 +5,22 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { refFromKey, shortMonth } from "@/lib/analysis/months";
-import type { RangeId, RangeOption } from "@/lib/analysis/ranges";
+import { customBounds, customRange, isCustomRange, type RangeId, type RangeOption } from "@/lib/analysis/ranges";
 import type { MonthPoint } from "@/lib/analysis/timeline";
 import { SavingsToggle } from "./savings-toggle";
 
-/** Do the summary and the categories describe the whole period or just one month? */
+/** A single month is looked at in detail (with the change vs the month before); several months, as a whole. */
 export type Scope = "period" | "month";
 
 interface FilterFabProps {
   ranges: RangeOption[];
   range: RangeId;
   onRange: (range: RangeId) => void;
-  /** Months of the chosen period, for the month picker. */
-  points: MonthPoint[];
-  scope: Scope;
-  selectedKey: string | null;
-  /** null = the whole period. */
-  onMonth: (key: string | null) => void;
-  /** Whether anything differs from the default view (current month, no savings). */
+  /** Every month there is, for the custom "from"/"to" pickers. */
+  timeline: MonthPoint[];
+  /** The months the chosen period covers. */
+  visible: MonthPoint[];
+  /** Whether anything differs from the default view (default period, no savings). */
   filtered: boolean;
   /** Back to the default view. */
   onReset: () => void;
@@ -33,21 +31,32 @@ interface FilterFabProps {
 const CHIP = "min-h-11 rounded-full border px-4 text-sm font-medium transition-colors sm:min-h-9";
 const CHIP_ON = "border-foreground bg-foreground text-background";
 const CHIP_OFF = "border-border text-foreground-secondary hover:bg-accent/60";
+const SELECT = "min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm sm:min-h-9";
 
-/** "Set/26": short enough for a three-column grid; the year keeps periods that span several years apart. */
-function monthChip(point: MonthPoint): string {
+/** "Set/26": the year keeps months of different years apart. */
+function monthOption(point: MonthPoint): string {
   const ref = refFromKey(point.key);
-  return `${shortMonth(ref.month)}/${ref.year.slice(2)}`;
+  return `${shortMonth(ref.month)}/${ref.year.slice(2)}${point.projected ? " (previsto)" : ""}`;
 }
 
 /**
  * Floating filter button (same spot and shape as the "new entry" one on the month screen). It opens a sheet
- * with the two choices: the period (what the chart and the table cover) and, inside it, the whole period or
- * one month (what the summary and the categories describe). Choices apply right away.
+ * with one period, which every block of the page follows (summary, chart, table and categories), and the
+ * "include savings" switch. A single month is just a period of one month. Choices apply right away.
  */
-export function FilterFab({ ranges, range, onRange, points, scope, selectedKey, onMonth, filtered, onReset, withSavings, onWithSavings }: FilterFabProps) {
+export function FilterFab({ ranges, range, onRange, timeline, visible, filtered, onReset, withSavings, onWithSavings }: FilterFabProps) {
   const [open, setOpen] = useState(false);
-  const focused = scope === "month" && selectedKey !== null;
+  const custom = isCustomRange(range);
+  const bounds = custom ? customBounds(range) : null;
+  const monthsCount = visible.length;
+
+  // Starts the custom span from the months already on screen, so switching to it changes nothing at first.
+  const startCustom = () => {
+    const span = visible.length > 0 ? visible : timeline;
+    if (custom || span.length === 0) return;
+    onRange(customRange(span[0].key, span[span.length - 1].key));
+  };
+
   return (
     <>
       {/* Small X on the button's top-right corner, so the filters can be dropped without opening the sheet. */}
@@ -62,7 +71,7 @@ export function FilterFab({ ranges, range, onRange, points, scope, selectedKey, 
         </button>
       )}
 
-      {/* Light on the default view; the primary color once the month, the scope or the savings differ from it. */}
+      {/* Light on the default view; the primary color once the period or the savings differ from it. */}
       <Button
         size="icon"
         variant={filtered ? "default" : "secondary"}
@@ -74,12 +83,10 @@ export function FilterFab({ ranges, range, onRange, points, scope, selectedKey, 
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent
-          className="max-h-[88dvh] overflow-y-auto max-sm:top-auto max-sm:bottom-0 max-sm:left-0 max-sm:max-w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:data-open:slide-in-from-bottom-10 sm:max-w-md"
-        >
+        <DialogContent className="max-h-[88dvh] overflow-y-auto max-sm:top-auto max-sm:bottom-0 max-sm:left-0 max-sm:max-w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:data-open:slide-in-from-bottom-10 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-lg leading-tight font-semibold">Filtrar análise</DialogTitle>
-            <DialogDescription>O período vale para o gráfico e a tabela; o mês, para o resumo e as categorias; a poupança, para todos os valores.</DialogDescription>
+            <DialogDescription>O período vale para a página toda: resumo, gráfico, tabela e categorias.</DialogDescription>
           </DialogHeader>
 
           <section className="flex flex-col gap-2">
@@ -96,37 +103,53 @@ export function FilterFab({ ranges, range, onRange, points, scope, selectedKey, 
                   {option.label}
                 </button>
               ))}
+              <button type="button" aria-pressed={custom} onClick={startCustom} className={`${CHIP} ${custom ? CHIP_ON : CHIP_OFF}`}>
+                Personalizado
+              </button>
             </div>
-          </section>
 
-          <section className="flex flex-col gap-2">
-            <h3 className="text-xs font-medium tracking-wide text-foreground-secondary uppercase">Mês</h3>
-            <button
-              type="button"
-              aria-pressed={!focused}
-              onClick={() => onMonth(null)}
-              className={`${CHIP} w-full ${!focused ? CHIP_ON : CHIP_OFF}`}
-            >
-              Todos os meses do período
-            </button>
-            <div role="group" aria-label="Mês" className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {points.map((point) => {
-                const active = focused && point.key === selectedKey;
-                return (
-                  <button
-                    key={point.key}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => onMonth(point.key)}
-                    title={point.source === "installments" ? (point.committed ? "Só as parcelas já contratadas" : "Só a fatura do cartão é conhecida") : point.projected ? "Previsto" : undefined}
-                    className={`${CHIP} px-2 ${active ? CHIP_ON : CHIP_OFF} ${point.projected && !active ? "border-dashed" : ""}`}
+            {bounds && (
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex flex-col gap-1 text-xs text-foreground-secondary">
+                  De
+                  <select
+                    className={SELECT}
+                    value={bounds.from}
+                    onChange={(event) => onRange(customRange(event.target.value, bounds.to < event.target.value ? event.target.value : bounds.to))}
                   >
-                    {monthChip(point)}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-[11px] text-foreground-secondary">Meses tracejados são previstos.</p>
+                    {timeline.map((point) => (
+                      <option key={point.key} value={point.key}>
+                        {monthOption(point)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-xs text-foreground-secondary">
+                  Até
+                  <select
+                    className={SELECT}
+                    value={bounds.to}
+                    onChange={(event) =>
+                      onRange(customRange(bounds.from > event.target.value ? event.target.value : bounds.from, event.target.value))
+                    }
+                  >
+                    {timeline.map((point) => (
+                      <option key={point.key} value={point.key}>
+                        {monthOption(point)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+
+            <p className="text-xs text-foreground-secondary">
+              {monthsCount === 0
+                ? "Nenhum mês neste período."
+                : monthsCount === 1
+                  ? "1 mês: o resumo e as categorias mostram a variação em relação ao mês anterior."
+                  : `${monthsCount} meses: o resumo e as categorias mostram o total e a média do período.`}
+            </p>
           </section>
 
           <section className="flex flex-col gap-2">
@@ -134,9 +157,16 @@ export function FilterFab({ ranges, range, onRange, points, scope, selectedKey, 
             <SavingsToggle withSavings={withSavings} onChange={onWithSavings} />
           </section>
 
-          <Button className="h-11 w-full text-base sm:h-9 sm:text-sm" onClick={() => setOpen(false)}>
-            Pronto
-          </Button>
+          <div className="flex gap-2">
+            {filtered && (
+              <Button variant="outline" className="h-11 flex-1 text-base sm:h-9 sm:text-sm" onClick={onReset}>
+                Limpar
+              </Button>
+            )}
+            <Button className="h-11 flex-1 text-base sm:h-9 sm:text-sm" onClick={() => setOpen(false)}>
+              Pronto
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

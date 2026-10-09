@@ -25,7 +25,8 @@ import type { Scope } from "./filter-bar";
 
 interface CategoryBreakdownProps {
   months: AnalysisMonth[];
-  selectedKey: string;
+  /** The month in focus: the one being detailed (month scope) or just highlighted (period scope). */
+  selectedKey: string | null;
   onSelectMonth: (key: string) => void;
   scope: Scope;
   /** Months of the visible period that have a tab. */
@@ -76,20 +77,20 @@ export function CategoryBreakdown({ months, selectedKey, onSelectMonth, scope, p
   // The views over time only make sense for a whole period; in month scope only ranking and pie apply.
   const activeView: View = scope === "period" || view === "pie" ? view : "ranking";
 
-  const monthBreakdown = useMemo(() => categoryBreakdown(months, selectedKey, options), [months, selectedKey, options]);
+  const monthBreakdown = useMemo(() => (selectedKey ? categoryBreakdown(months, selectedKey, options) : null), [months, selectedKey, options]);
   const periodBreakdown = useMemo(() => categoryBreakdownForPeriod(months, periodKeys, options), [months, periodKeys, options]);
   const matrix = useMemo(
     () => (activeView === "ranking" ? null : categoryMatrix(months, periodKeys, options, activeView === "heatmap" ? 12 : 6)),
     [months, periodKeys, options, activeView],
   );
 
-  const ref = refFromKey(selectedKey);
-  const paidFrom = previousRef(ref);
+  const ref = selectedKey ? refFromKey(selectedKey) : null;
+  const paidFrom = ref ? previousRef(ref) : null;
   const color = kind === "saidas" ? TABLE_HEADER_COLORS.debitos : TABLE_HEADER_COLORS.entradas;
 
   const rows: RankRow[] =
     scope === "month"
-      ? monthBreakdown.rows.map((row) => ({ ...row, average: null }))
+      ? (monthBreakdown?.rows ?? []).map((row) => ({ ...row, average: null }))
       : periodBreakdown.rows.map((row) => ({ categoria: row.categoria, total: row.total, share: row.share, isSavings: row.isSavings, delta: null, average: row.average }));
   const hasData = scope === "month" ? months.some((month) => monthKey(month) === selectedKey) : periodBreakdown.monthsCount > 0;
   const top = rows[0]?.total ?? 1;
@@ -101,7 +102,7 @@ export function CategoryBreakdown({ months, selectedKey, onSelectMonth, scope, p
       <header className="flex flex-col gap-0.5 px-1">
         <h2 className="text-base font-semibold">Categorias</h2>
         <p className="text-xs text-foreground-secondary">
-          {scope === "month" ? refLabel(ref) : `${periodLabel} · ${monthsCount} ${monthsCount === 1 ? "mês" : "meses"}`}
+          {scope === "month" && ref ? refLabel(ref) : `${periodLabel} · ${monthsCount} ${monthsCount === 1 ? "mês" : "meses"}`}
           {kind === "saidas" &&
             (scope === "month"
               ? paidFrom && ` · inclui as compras do cartão de ${paidFrom.month.toLowerCase()}, pagas neste mês`
@@ -119,7 +120,7 @@ export function CategoryBreakdown({ months, selectedKey, onSelectMonth, scope, p
               type="button"
               disabled={disabled}
               aria-pressed={active}
-              title={disabled ? "Disponível só no escopo Período" : undefined}
+              title={disabled ? "Disponível só quando o período tem mais de um mês" : undefined}
               onClick={() => setView(option.id)}
               className={`rounded-full px-3 py-1.5 text-sm transition-colors disabled:opacity-40 ${
                 active ? "bg-background font-medium shadow-sm" : "text-foreground-secondary hover:text-foreground"

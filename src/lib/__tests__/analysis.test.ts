@@ -4,7 +4,7 @@ import { baseName, freedByMonth, installmentsByBill, listInstallmentPlans, listL
 import { addMonths, monthKey, refFromKey } from "../analysis/months";
 import { parseMonth } from "../analysis/parseMonth";
 import { monthDataNet, summarizeSavings } from "../analysis/savings";
-import { pointsInRange, rangeOptions } from "../analysis/ranges";
+import { customRange, customRangeLabel, pointsInRange, rangeOptions } from "../analysis/ranges";
 import { buildTimeline, committedView, pickReferenceMonth, summarizePeriod, viewPoint } from "../analysis/timeline";
 import type { AnalysisDebito, AnalysisEntrada, AnalysisMonth, AnalysisNubank } from "../analysis/types";
 import type { SheetGrid } from "../sheets/types";
@@ -658,13 +658,21 @@ describe("ranges", () => {
     expect(keys("all")).toHaveLength(timeline.length);
   });
 
+  it("cuts the current month and custom spans of months, whichever order the bounds come in", () => {
+    expect(keys("month")).toEqual(["2026-09"]);
+    expect(keys(customRange("2026-09", "2026-10"))).toEqual(["2026-09", "2026-10"]);
+    expect(keys(customRange("2026-10", "2026-09"))).toEqual(["2026-09", "2026-10"]);
+    expect(customRangeLabel(customRange("2026-09", "2026-09"))).toBe("Set/26");
+    expect(customRangeLabel(customRange("2026-08", "2026-10"))).toBe("Ago/26 – Out/26");
+  });
+
   it("starts the next 12 months at the current month", () => {
     expect(keys("next12")[0]).toBe("2026-09");
   });
 
   it("offers other years with data and skips empty ranges", () => {
     const ids = rangeOptions(timeline, NOW).map((option) => option.id);
-    expect(ids).toEqual(["year", "ytd", "next12", "nextYear", "y:2025", "all"]);
+    expect(ids).toEqual(["month", "year", "ytd", "next12", "nextYear", "y:2025", "all"]);
     expect(rangeOptions([], NOW).map((option) => option.id)).toEqual(["year"]);
   });
 });
