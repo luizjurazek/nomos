@@ -5,7 +5,10 @@ import { getInitialSavingsBalance } from "@/lib/analysis/config";
 import { currentMonthNow } from "@/lib/analysis/months";
 import { readAllYears } from "@/lib/analysis/readAllYears";
 import { monthDataNet, summarizeSavings } from "@/lib/analysis/savings";
+import { BALANCE_TRANSFER_WINDOW_DAYS } from "@/lib/sheets/balanceTransfer";
+import { readBalanceTransferPlan } from "@/lib/sheets/balanceTransferPlan";
 import { getCategories } from "@/lib/sheets/categories";
+import { getCurrentDayOfMonth, getCurrentYearMonth, monthIndex } from "@/lib/sheets/monthNames";
 import { readMonth } from "@/lib/sheets/readMonth";
 import { getCategoriesSpreadsheetId, getSpreadsheetId } from "@/lib/sheets/spreadsheetRegistry";
 
@@ -26,7 +29,12 @@ export default async function MonthPage({
     notFound();
   }
 
-  const [monthData, categories, history, initialBalance] = await Promise.all([
+  // The leftover shortcut only shows on the current month, in its first days.
+  const now = getCurrentYearMonth();
+  const offerBalanceTransfer =
+    Number(year) === now.year && monthIndex(month) === now.monthIndex && getCurrentDayOfMonth() <= BALANCE_TRANSFER_WINDOW_DAYS;
+
+  const [monthData, categories, history, initialBalance, balanceTransfer] = await Promise.all([
     readMonth(spreadsheetId, year, month),
     getCategories(getCategoriesSpreadsheetId()),
     // Every month of every year (cached ~1 min, shared with /analise): only feeds the savings total, so
@@ -34,6 +42,7 @@ export default async function MonthPage({
     readAllYears().catch(() => null),
     // Savings from before this app existed; missing "Config" tab just means no offset.
     getInitialSavingsBalance().catch(() => 0),
+    offerBalanceTransfer ? readBalanceTransferPlan(year, month) : null,
   ]);
   const savings = summarizeSavings(history, { year, month }, currentMonthNow(), monthDataNet(monthData), initialBalance);
 
@@ -46,6 +55,7 @@ export default async function MonthPage({
       categoriasEntradas={categories.entradas}
       categoriasSaidas={categories.saidas}
       initialTab={tab && isTableSlug(tab) ? tab : undefined}
+      balanceTransfer={balanceTransfer && balanceTransfer.legs.length > 0 ? balanceTransfer : null}
     />
   );
 }

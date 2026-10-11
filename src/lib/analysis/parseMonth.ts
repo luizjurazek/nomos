@@ -2,11 +2,14 @@ import { toNumber } from "../format/currency";
 import { parseInstallment } from "../format/installment";
 import { locateTables } from "../sheets/locateTables";
 import { extractRawRows } from "../sheets/rowExtraction";
+import { isBalanceTransferCategory } from "../sheets/balanceTransfer";
 import { CARD_ADJUSTMENT_CATEGORY, CARD_ROLLOVER_CATEGORY, TABLE_CONFIGS } from "../sheets/tableConfigs";
 import type { SheetCell, SheetGrid } from "../sheets/types";
 import type { AnalysisDebito, AnalysisEntrada, AnalysisMonth, AnalysisNubank } from "./types";
 
 const text = (value: SheetCell | undefined) => String(value ?? "").trim();
+/** A month's leftover moved into the next one: not income nor spending, so the analysis skips both ends. */
+const isBalanceTransfer = (row: { values: { category?: SheetCell } }) => isBalanceTransferCategory(text(row.values.category));
 
 /**
  * Turns a month tab's grids into the lean rows the analysis needs. `formatted` is used to find the
@@ -16,35 +19,39 @@ export function parseMonth(year: string, month: string, formatted: SheetGrid, ra
   const located = locateTables(formatted);
 
   const entradas: AnalysisEntrada[] = located.entradas
-    ? extractRawRows(raw, located.entradas, TABLE_CONFIGS.entradas.columnOrder).map((row) => {
-        const categoria = text(row.values.category);
-        const name = text(row.values.name);
-        return {
-          date: text(row.values.date),
-          name,
-          categoria,
-          valor: toNumber(row.values.valor),
-          installment: parseInstallment(name),
-          isTransfer: TABLE_CONFIGS.entradas.semanticTags.some((tag) => tag.category === categoria),
-        };
-      })
+    ? extractRawRows(raw, located.entradas, TABLE_CONFIGS.entradas.columnOrder)
+        .filter((row) => !isBalanceTransfer(row))
+        .map((row) => {
+          const categoria = text(row.values.category);
+          const name = text(row.values.name);
+          return {
+            date: text(row.values.date),
+            name,
+            categoria,
+            valor: toNumber(row.values.valor),
+            installment: parseInstallment(name),
+            isTransfer: TABLE_CONFIGS.entradas.semanticTags.some((tag) => tag.category === categoria),
+          };
+        })
     : [];
 
   const debitos: AnalysisDebito[] = located.debitos
-    ? extractRawRows(raw, located.debitos, TABLE_CONFIGS.debitos.columnOrder).map((row) => {
-        const categoria = text(row.values.category);
-        const name = text(row.values.name);
-        return {
-          date: text(row.values.date),
-          name,
-          categoria,
-          valor: toNumber(row.values.valor),
-          installment: parseInstallment(name),
-          isTransfer: TABLE_CONFIGS.debitos.semanticTags.some((tag) => tag.category === categoria),
-          isCardRollover: categoria === CARD_ROLLOVER_CATEGORY,
-          isCardAdjustment: categoria === CARD_ADJUSTMENT_CATEGORY,
-        };
-      })
+    ? extractRawRows(raw, located.debitos, TABLE_CONFIGS.debitos.columnOrder)
+        .filter((row) => !isBalanceTransfer(row))
+        .map((row) => {
+          const categoria = text(row.values.category);
+          const name = text(row.values.name);
+          return {
+            date: text(row.values.date),
+            name,
+            categoria,
+            valor: toNumber(row.values.valor),
+            installment: parseInstallment(name),
+            isTransfer: TABLE_CONFIGS.debitos.semanticTags.some((tag) => tag.category === categoria),
+            isCardRollover: categoria === CARD_ROLLOVER_CATEGORY,
+            isCardAdjustment: categoria === CARD_ADJUSTMENT_CATEGORY,
+          };
+        })
     : [];
 
   const nubank: AnalysisNubank[] = located.nubank
