@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { sortAlphabetically } from "@/lib/format/alphabetical";
 import { formatCurrency } from "@/lib/format/currency";
 import { UNKNOWN_DAY_KEY, dayLabel, daysFromToday, groupRowsByDay } from "@/lib/format/dayGroups";
 import { TableFooterStats, type Stat } from "./table-footer-stats";
@@ -97,7 +98,7 @@ export function EntryList<T extends ListRow>({ rows, renderRow, emptyMessage, fi
   const setStatus = (label: string) => setFilters((prev) => ({ ...prev, status: label === status?.doneLabel ? "done" : label === status?.pendingLabel ? "pending" : "" }));
 
   const categories = useMemo(
-    () => [...new Set(rows.map((row) => row.categoria?.trim() ?? "").filter(Boolean))],
+    () => sortAlphabetically([...new Set(rows.map((row) => row.categoria?.trim() ?? "").filter(Boolean))]),
     [rows],
   );
 

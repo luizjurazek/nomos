@@ -29,12 +29,17 @@ export function MonthSummaryDropdown({ kpis, savings }: { kpis: MonthKpis; savin
   const [open, setOpen] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLButtonElement>(null);
-  // Room left in the viewport below the header, so the open list fits the first screen and scrolls inside.
+  // From lg, room left in the viewport below the header, so the open list fits the sidebar and scrolls inside.
+  // On mobile the list stays uncapped and shows in full; the page scrolls instead.
   const [maxListHeight, setMaxListHeight] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
     const measure = () => {
+      if (!window.matchMedia("(min-width: 1024px)").matches) {
+        setMaxListHeight(null);
+        return;
+      }
       const section = sectionRef.current;
       const header = headerRef.current;
       if (!section || !header) return;
@@ -114,7 +119,7 @@ export function MonthSummaryDropdown({ kpis, savings }: { kpis: MonthKpis; savin
       </button>
       {open && (
         <div
-          className="min-h-0 divide-y divide-border overflow-y-auto border-t border-border [scrollbar-width:thin]"
+          className="min-h-0 divide-y divide-border border-t border-border lg:overflow-y-auto lg:[scrollbar-width:thin]"
           style={maxListHeight ? { maxHeight: maxListHeight } : undefined}
         >
           {sections.map((section) => (
