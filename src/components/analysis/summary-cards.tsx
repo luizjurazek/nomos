@@ -1,5 +1,5 @@
 import { formatBRL, formatPercent } from "@/lib/analysis/format";
-import { committedView, viewPoint, type MonthPoint, type PeriodSummary } from "@/lib/analysis/timeline";
+import { committedView, viewPoint, type MonthPoint, type PeriodSummary, type SavingsOpening } from "@/lib/analysis/timeline";
 import { TABLE_HEADER_COLORS } from "@/components/finance/table-colors";
 import { SAVINGS_COLOR } from "./colors";
 import { shortRefLabel } from "./labels";
@@ -26,9 +26,16 @@ function savingsStats(aportes: number | null, retiradas: number | null, realInco
   ];
 }
 
-/** `initialBalance` (savings from before this app existed) is added to the headline only, never to "Da renda": that stat is about this period's own income. */
-function periodTiles(summary: PeriodSummary, initialBalance: number): Tile[] {
-  const poupadoTotal = summary.poupadoTotal + initialBalance;
+/** "Até ago/26" when months on record come before, "Saldo inicial" when only the savings from before the app do. */
+const openingLabel = (opening: SavingsOpening) => (opening.through ? `Até ${shortRefLabel(opening.through)}` : "Saldo inicial");
+
+/**
+ * The savings headline is the running total at the end of the period (what was already saved before it plus what it
+ * saved); the period's own share is the first line under it. "Da renda" stays about the period's own income.
+ */
+function periodTiles(summary: PeriodSummary, opening: SavingsOpening, last: MonthPoint): Tile[] {
+  const poupadoTotal = opening.total + summary.poupadoTotal;
+  const showOpening = opening.through !== null || opening.total !== 0;
   return [
     { label: "Saldo do período", value: formatBRL(summary.saldoTotal), hint: `${summary.months} ${summary.months === 1 ? "mês" : "meses"}` },
     { label: "Entradas por mês", value: formatBRL(summary.avgEntradas), hint: "média", dot: TABLE_HEADER_COLORS.entradas },
@@ -43,20 +50,22 @@ function periodTiles(summary: PeriodSummary, initialBalance: number): Tile[] {
       ],
     },
     {
-      label: "Poupado no período",
+      label: `Poupado até ${shortRefLabel(last)}`,
       value: formatBRL(poupadoTotal),
       dot: SAVINGS_COLOR,
       negative: poupadoTotal < 0,
       stats: [
+        // No month with a tab in the period (only contracted installments): nothing known was saved in it.
+        { label: "No período", value: money(summary.months > 0 ? summary.poupadoTotal : null) },
         ...savingsStats(summary.aportesTotal, summary.retiradasTotal, summary.realIncome, summary.poupadoTotal),
-        ...(initialBalance ? [{ label: "Saldo inicial", value: money(initialBalance) }] : []),
+        ...(showOpening ? [{ label: openingLabel(opening), value: money(opening.total) }] : []),
       ],
     },
   ];
 }
 
 /** `raw` is the month as the sheet has it; what is shown follows the page-wide savings switch (see `viewPoint`). */
-function monthTiles(raw: MonthPoint, withSavings: boolean): Tile[] {
+function monthTiles(raw: MonthPoint, withSavings: boolean, opening: SavingsOpening): Tile[] {
   const committed = raw.committed !== null;
   const point = viewPoint(committedView(raw), withSavings);
   const saidas = point.debitos === null ? null : point.debitos + point.cartao;
@@ -80,7 +89,10 @@ function monthTiles(raw: MonthPoint, withSavings: boolean): Tile[] {
       value: money(point.poupado),
       dot: SAVINGS_COLOR,
       negative: point.poupado !== null && point.poupado < 0,
-      stats: savingsStats(point.aportes, point.retiradas, realIncome, point.poupado),
+      stats: [
+        ...savingsStats(point.aportes, point.retiradas, realIncome, point.poupado),
+        { label: `Total até ${shortRefLabel(point)}`, value: formatBRL(opening.total + (point.poupado ?? 0)) },
+      ],
     },
   ];
 }
@@ -91,16 +103,19 @@ export function SummaryCards({
   summary,
   point,
   withSavings,
-  initialBalance,
+  opening,
+  last,
 }: {
   scope: Scope;
   summary: PeriodSummary;
   point: MonthPoint | null;
   withSavings: boolean;
-  /** Savings from before this app existed; only meaningful for a period, so a selected month ignores it. */
-  initialBalance: number;
+  /** What was already saved when the selected month (or else the period) starts: see `savingsBefore`. */
+  opening: SavingsOpening;
+  /** Last month of the period, which the savings total runs up to. */
+  last: MonthPoint;
 }) {
-  const tiles = scope === "month" && point ? monthTiles(point, withSavings) : periodTiles(summary, initialBalance);
+  const tiles = scope === "month" && point ? monthTiles(point, withSavings, opening) : periodTiles(summary, opening, last);
 
   // Grid items stretch to the tallest of their row, so a taller tile lifts its neighbour instead of leaving it short.
   return (

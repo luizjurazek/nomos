@@ -1,4 +1,4 @@
-import { isAfterNow, indexByKey, monthKey, nextRef, previousRef, sortMonths, sumValues, type MonthRef, type Now } from "./months";
+import { isAfterNow, indexByKey, monthKey, nextRef, previousRef, refFromKey, sortMonths, sumValues, type MonthRef, type Now } from "./months";
 import type { AnalysisMonth } from "./types";
 
 export interface MonthPoint {
@@ -212,5 +212,24 @@ export function summarizePeriod(points: MonthPoint[], withSavings = true): Perio
     avgSaidas: count ? avgSaidas / count : 0,
     avgDebitos: count ? (avgSaidas - totalCartao) / count : 0,
     avgCartao: count ? totalCartao / count : 0,
+  };
+}
+
+/** What was already saved when a period (or month) starts: the base its own savings add to. */
+export interface SavingsOpening {
+  total: number;
+  /** Last month counted in `total`; null when no month on record comes before, so `total` is only the initial balance. */
+  through: MonthRef | null;
+}
+
+/**
+ * Savings from before the app (`initialBalance`) plus the net poupado of every timeline month before `key`. Months
+ * past the last tab add nothing: they have no savings figure, only what is already contracted.
+ */
+export function savingsBefore(timeline: MonthPoint[], key: string, initialBalance: number): SavingsOpening {
+  const before = timeline.filter((point) => point.key < key);
+  return {
+    total: before.reduce((acc, point) => acc + (point.poupado ?? 0), initialBalance),
+    through: before.length > 0 ? previousRef(refFromKey(key)) : null,
   };
 }
