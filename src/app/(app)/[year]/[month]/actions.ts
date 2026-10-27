@@ -84,14 +84,14 @@ export async function createEntries(year: string, month: string, entries: BatchE
  * Creates one row per installment, starting at `month`, each named "<name> (i/N)" following
  * the existing convention that `parseInstallment` reads back on the month pages. `valuesByRole`
  * already carries the per-installment value (not the purchase total) — it's copied as-is onto
- * every row, only `name` and `date` change per installment. All rows go out in one batched,
- * atomic write (each installment lives in a different tab), so a failure never leaves a plan
- * half created.
+ * every row, only `name` and `date` change per installment.
  *
- * Attention point: a plan that would run past Dezembro isn't supported yet, because each year
- * lives in its own spreadsheet (see spreadsheetRegistry.ts) and the next year's tabs may not
- * exist. A December purchase paid into January needs manual entry in the next year's sheet for
- * now — revisit once cross-year spreadsheets can be resolved/created from here.
+ * Plans that run past Dezembro continue into Janeiro onward of the following years, which live in
+ * their own spreadsheets (see spreadsheetRegistry.ts). Every needed year's spreadsheet is resolved
+ * up front, so a year that isn't configured fails before anything is written. Within one year the
+ * write is a single atomic batch (see createRowsAcrossMonths); across years the batches run one
+ * after another, later years first, so a missing tab in a future year aborts before the current
+ * year is touched.
  */
 export async function createInstallmentEntries(
   year: string,
@@ -100,7 +100,6 @@ export async function createInstallmentEntries(
   valuesByRole: Partial<Record<ColumnRole, SheetCell>>,
   installments: number,
 ): Promise<void> {
-  const spreadsheetId = getSpreadsheetId(year);
   const startIndex = MONTH_NAMES.findIndex((name) => name.toLowerCase() === month.trim().toLowerCase());
   if (startIndex === -1) {
     throw new Error(`Mês "${month}" não reconhecido.`);
@@ -108,31 +107,45 @@ export async function createInstallmentEntries(
   if (installments < 2) {
     throw new Error("Número de parcelas precisa ser maior que 1.");
   }
-  if (startIndex + installments > MONTH_NAMES.length) {
-    throw new Error(
-      "Parcelamento que passa de dezembro para o próximo ano ainda não é suportado. Lance as parcelas restantes manualmente na planilha do próximo ano quando ela existir.",
-    );
-  }
 
   const baseName = String(valuesByRole.name ?? "").trim();
   const baseDate = parseSheetDate(String(valuesByRole.date ?? ""));
-  const targetMonths = MONTH_NAMES.slice(startIndex, startIndex + installments);
 
-  // One entry per month tab, written in a single batch (all or nothing) — see createRowsAcrossMonths.
-  await createRowsAcrossMonths(
-    spreadsheetId,
-    tableId,
-    targetMonths.map((targetMonth, i) => ({
-      monthTitle: targetMonth,
+  const entriesByYear = new Map<string, { monthTitle: string; values: Partial<Record<ColumnRole, SheetCell>> }[]>();
+  for (let i = 0; i < installments; i++) {
+    const absoluteMonth = startIndex + i;
+    const targetYear = String(Number(year) + Math.floor(absoluteMonth / MONTH_NAMES.length));
+    const monthTitle = MONTH_NAMES[absoluteMonth % MONTH_NAMES.length];
+    const entries = entriesByYear.get(targetYear) ?? [];
+    entries.push({
+      monthTitle,
       values: {
         ...valuesByRole,
         name: `${baseName} (${i + 1}/${installments})`,
-        date: baseDate ? formatSheetDate({ ...baseDate, month: getMonthNumber(targetMonth) }) : valuesByRole.date,
+        date: baseDate
+          ? formatSheetDate({ ...baseDate, month: getMonthNumber(monthTitle), year: targetYear })
+          : valuesByRole.date,
       },
-    })),
-  );
+    });
+    entriesByYear.set(targetYear, entries);
+  }
 
-  targetMonths.forEach((targetMonth) => revalidateMonth(year, targetMonth));
+  // Resolve every spreadsheet before writing anything.
+  const spreadsheetIds = new Map<string, string>();
+  for (const targetYear of entriesByYear.keys()) {
+    try {
+      spreadsheetIds.set(targetYear, getSpreadsheetId(targetYear));
+    } catch {
+      throw new Error(`Não existe planilha configurada para ${targetYear}, necessária para as parcelas restantes.`);
+    }
+  }
+
+  const years = [...entriesByYear.keys()].sort().reverse();
+  for (const targetYear of years) {
+    const entries = entriesByYear.get(targetYear)!;
+    await createRowsAcrossMonths(spreadsheetIds.get(targetYear)!, tableId, entries);
+    entries.forEach((entry) => revalidateMonth(targetYear, entry.monthTitle));
+  }
 }
 
 export async function updateEntry(
