@@ -1,9 +1,10 @@
 "use client";
 
 import { formatBRL } from "@/lib/analysis/format";
-import { committedView, type MonthPoint } from "@/lib/analysis/timeline";
+import { committedView, type MonthPoint, type SavingsOpening } from "@/lib/analysis/timeline";
 import { TABLE_HEADER_COLORS } from "@/components/finance/table-colors";
 import { SAVINGS_COLOR } from "./colors";
+import { shortRefLabel } from "./labels";
 
 const money = (value: number | null) => (value === null ? "—" : formatBRL(value));
 
@@ -14,7 +15,7 @@ export function MonthTable({
   onSelect,
   onHover,
   embedded = false,
-  initialBalance = 0,
+  opening = null,
 }: {
   points: MonthPoint[];
   selectedKey: string | null;
@@ -23,8 +24,9 @@ export function MonthTable({
   onHover?: (key: string | null) => void;
   /** Drops the card frame and the scrolling when the table already sits inside a scrolling card. */
   embedded?: boolean;
-  /** Savings from before this app existed; shown as a row before the first month, not tied to any of them. */
-  initialBalance?: number;
+  /** What was already saved when the period starts (see `savingsBefore`): a row before the first month, so a period
+   *  that starts later (a future year, say) still shows the total it builds on. */
+  opening?: SavingsOpening | null;
 }) {
   const columns = [
     { label: "Entradas", color: TABLE_HEADER_COLORS.entradas },
@@ -51,15 +53,15 @@ export function MonthTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {initialBalance !== 0 && (
-            <tr className="text-foreground-secondary">
+          {opening && (opening.through !== null || opening.total !== 0) && (
+            <tr className="text-foreground-secondary" title="Poupado antes do período, com o saldo inicial">
               <th scope="row" className="px-3 py-2 text-left font-medium">
-                Saldo inicial
+                {opening.through ? `Até ${shortRefLabel(opening.through)}` : "Saldo inicial"}
               </th>
               <td className="px-3 py-2 text-right">—</td>
               <td className="px-3 py-2 text-right">—</td>
               <td className="px-3 py-2 text-right">—</td>
-              <td className={`px-3 py-2 text-right ${initialBalance < 0 ? "text-destructive" : ""}`}>{money(initialBalance)}</td>
+              <td className={`px-3 py-2 text-right ${opening.total < 0 ? "text-destructive" : ""}`}>{money(opening.total)}</td>
               <td className="px-3 py-2 text-right">—</td>
             </tr>
           )}

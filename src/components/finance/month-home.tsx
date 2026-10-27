@@ -3,8 +3,10 @@
 import { useEffect, useState, useTransition } from "react";
 import { syncCardRolloverAction } from "@/app/(app)/[year]/[month]/actions";
 import type { SavingsSummary } from "@/lib/analysis/savings";
+import type { BalanceTransferPlan } from "@/lib/sheets/balanceTransfer";
 import type { MonthData } from "@/lib/sheets/types";
 import { BalanceHero } from "./balance-hero";
+import { BalanceTransferCard } from "./balance-transfer-card";
 import { DebitosTable } from "./debitos-table";
 import { EntradasTable } from "./entradas-table";
 import { MonthSummaryDropdown } from "./month-summary-dropdown";
@@ -25,10 +27,12 @@ interface MonthHomeProps {
   categoriasSaidas: string[];
   /** Set only when the URL asks for a table (?tab=); otherwise the one last used is kept across months. */
   initialTab?: TableSlug;
+  /** Previous month's leftover still to move into this one; only set on the first days of the current month. */
+  balanceTransfer?: BalanceTransferPlan | null;
 }
 
 /** Nubank-style month screen: balance cards on top, then badges that swap the list shown below. */
-export function MonthHome({ monthData, savings, year, month, categoriasEntradas, categoriasSaidas, initialTab }: MonthHomeProps) {
+export function MonthHome({ monthData, savings, year, month, categoriasEntradas, categoriasSaidas, initialTab, balanceTransfer }: MonthHomeProps) {
   // Tab lives in local state so switching badges never re-runs the server read. Changing month mounts this screen
   // again, so the choice is also remembered (see view-memory) and picked up here.
   const [activeTab, setActiveTab] = useState<TableSlug>(() => initialTab ?? readTab() ?? "debitos");
@@ -53,6 +57,7 @@ export function MonthHome({ monthData, savings, year, month, categoriasEntradas,
       {/* From lg the summary column stays in view while the list scrolls. It is capped at the visible height
           (viewport minus the ~65px header and the sticky offset) and scrolls on its own if it is taller. */}
       <aside className="flex flex-col gap-3 lg:sticky lg:top-6 lg:-m-1 lg:max-h-[calc(100dvh-65px-3rem)] lg:overflow-y-auto lg:p-1 lg:[scrollbar-width:thin]">
+      {balanceTransfer && <BalanceTransferCard plan={balanceTransfer} />}
       <BalanceHero kpis={monthData.kpis} />
       <VaBalanceCard
         saldo={monthData.kpis.valeAlimentacaoSaldo}

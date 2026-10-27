@@ -5,7 +5,7 @@ import { addMonths, monthKey, refFromKey } from "../analysis/months";
 import { parseMonth } from "../analysis/parseMonth";
 import { monthDataNet, summarizeSavings } from "../analysis/savings";
 import { customRange, customRangeLabel, pointsInRange, rangeOptions } from "../analysis/ranges";
-import { buildTimeline, committedView, pickReferenceMonth, summarizePeriod, viewPoint } from "../analysis/timeline";
+import { buildTimeline, committedView, pickReferenceMonth, savingsBefore, summarizePeriod, viewPoint, type MonthPoint } from "../analysis/timeline";
 import type { AnalysisDebito, AnalysisEntrada, AnalysisMonth, AnalysisNubank } from "../analysis/types";
 import type { SheetGrid } from "../sheets/types";
 import { TABLE_CONFIGS } from "../sheets/tableConfigs";
@@ -729,5 +729,24 @@ describe("ledger installment plans", () => {
       ["entrada", "Empréstimo Euflausinos", "2028-02"],
     ]);
     expect(plans[1]).toMatchObject({ doneCount: 3, remainingCount: 17, doneAmount: 3000, remainingAmount: 17000, totalAmount: 20000 });
+  });
+});
+
+describe("savingsBefore", () => {
+  const point = (key: string, poupado: number | null): MonthPoint => {
+    const ref = refFromKey(key);
+    return {
+      key, year: ref.year, month: ref.month, entradas: null, debitos: null, cartao: 0, saldo: null,
+      aportes: null, retiradas: null, poupado, projected: true, source: poupado === null ? "installments" : "sheet", committed: null,
+    };
+  };
+  const timeline = [point("2026-11", 300), point("2026-12", -100), point("2027-01", null), point("2027-12", null), point("2028-01", null)];
+
+  it("adds every month before the period to the initial balance, through the month right before it", () => {
+    expect(savingsBefore(timeline, "2028-01", 7600)).toEqual({ total: 7800, through: { year: "2027", month: "Dezembro" } });
+  });
+
+  it("is only the initial balance when the period starts at the first month on record", () => {
+    expect(savingsBefore(timeline, "2026-11", 7600)).toEqual({ total: 7600, through: null });
   });
 });

@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatAxisBRL, formatBRL } from "@/lib/analysis/format";
 import { shortMonth } from "@/lib/analysis/months";
-import type { MonthPoint } from "@/lib/analysis/timeline";
+import type { MonthPoint, SavingsOpening } from "@/lib/analysis/timeline";
 import { DeltaText, type Better } from "./delta-text";
 import { TABLE_HEADER_COLORS } from "@/components/finance/table-colors";
 import { columnPath, niceScale } from "./chart-utils";
@@ -115,12 +115,12 @@ interface MonthlyChartProps {
   onSelect: (key: string) => void;
   /** Whether `points` carry the savings money in entradas/débitos (see `viewPoint`); the page-wide switch. */
   withSavings: boolean;
-  /** Savings from before this app existed. Only the table view shows it (as a row before the first month); the bar/line
-   *  views plot monthly flows, not a running balance, so there's no natural spot for a one-off starting point there. */
-  initialBalance: number;
+  /** What was already saved when the period starts (see `savingsBefore`). Only the table view shows it (as a row before
+   *  the first month); the bar/line views plot monthly flows, not a running balance, so there's no natural spot for it there. */
+  opening: SavingsOpening | null;
 }
 
-export function MonthlyChart({ points, selectedKey, onSelect, withSavings, initialBalance }: MonthlyChartProps) {
+export function MonthlyChart({ points, selectedKey, onSelect, withSavings, opening }: MonthlyChartProps) {
   const [view, setView] = useState<View>("table");
   // Mouse/keyboard hover: the month plus the x (relative to the chart box) where its tooltip is anchored.
   const [hover, setHover] = useState<{ key: string; x: number } | null>(null);
@@ -269,7 +269,7 @@ export function MonthlyChart({ points, selectedKey, onSelect, withSavings, initi
               onSelect={choose}
               onHover={(key) => setHover(key ? { key, x: 0 } : null)}
               embedded
-              initialBalance={initialBalance}
+              opening={opening}
             />
           </div>
         )}

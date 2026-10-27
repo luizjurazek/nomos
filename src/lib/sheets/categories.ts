@@ -1,5 +1,6 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
+import { sortAlphabetically } from "@/lib/format/alphabetical";
 import { getSheetsClient } from "./client";
 import { quoteSheetTitle } from "./gridIO";
 import type { Categories } from "./types";
@@ -37,7 +38,13 @@ async function readCategories(spreadsheetId: string): Promise<Categories> {
  * itself barely ever changes (a few times a year), and the Sheets API read quota is shared by
  * everyone using the app. The "Atualizar" button on /analise drops it right away via the tag.
  */
-export const getCategories = unstable_cache(readCategories, ["categories"], {
+const getCachedCategories = unstable_cache(readCategories, ["categories"], {
   tags: [CATEGORIES_CACHE_TAG],
   revalidate: 3600,
 });
+
+/** Same lists in alphabetical order, so every category dropdown reads the same way whatever the sheet's order. */
+export async function getCategories(spreadsheetId: string): Promise<Categories> {
+  const { entradas, saidas } = await getCachedCategories(spreadsheetId);
+  return { entradas: sortAlphabetically(entradas), saidas: sortAlphabetically(saidas) };
+}

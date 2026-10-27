@@ -38,8 +38,19 @@ function toRowValues(columnOrder: ColumnRole[], valuesByRole: Partial<Record<Col
 }
 
 /**
- * Inserts `count` real rows just above the table's first Total row (shifting it and everything
- * below down), or right after the data range if the table has no Total row at all — in a single
+ * Where new rows go: just above the table's first Total row, or right after the data range if the
+ * table has no Total row at all. Vale Alimentação-crédito has neither a Total row nor a header of
+ * its own (its range ends right above the gastos header): there rows go before its last row, inside
+ * the range, so the sheet's own SUM over the block (e.g. `SUM(F20:F21)`) grows to include them.
+ */
+function insertIndex(location: TableLocation): number {
+  if (location.totalRows.length > 0) return location.totalRows[0].row;
+  if (location.tableId === "valeAlimentacaoCredito" && location.dataEndRow > location.dataStartRow) return location.dataEndRow;
+  return location.dataEndRow + 1;
+}
+
+/**
+ * Inserts `count` real rows at `insertIndex` (shifting everything below down) — in a single
  * `batchUpdate` call, one `insertDimension` request per row, all at the same index: each
  * insertion pushes the previous one down, so the result is `count` consecutive blank rows
  * starting at that index. Uses inheritFromBefore so each new row picks up the formatting
@@ -49,7 +60,7 @@ function toRowValues(columnOrder: ColumnRole[], valuesByRole: Partial<Record<Col
 async function insertBlankRows(spreadsheetId: string, monthTitle: string, location: TableLocation, count: number): Promise<number[]> {
   const sheets = getSheetsClient();
   const sheetId = await getSheetIdByTitle(spreadsheetId, monthTitle);
-  const insertAt = location.totalRows.length > 0 ? location.totalRows[0].row : location.dataEndRow + 1;
+  const insertAt = insertIndex(location);
 
   await sheets.spreadsheets.batchUpdate(
     {
@@ -158,7 +169,7 @@ export async function createRowsAcrossMonths(
       const requests = needInsert.map(({ entry, location }) => {
         const sheetId = sheetIds.get(entry.monthTitle);
         if (sheetId === undefined) throw new Error(`Tab "${entry.monthTitle}" not found in spreadsheet ${spreadsheetId}.`);
-        const insertAt = location.totalRows.length > 0 ? location.totalRows[0].row : location.dataEndRow + 1;
+        const insertAt = insertIndex(location);
         insertedRows.set(entry.monthTitle, insertAt);
         return {
           insertDimension: {

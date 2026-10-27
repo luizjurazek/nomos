@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { freedByMonth, installmentsByBill, listInstallmentPlans, listLedgerPlans, summarizePlans, upcomingBills } from "@/lib/analysis/installments";
 import { refFromKey, type Now } from "@/lib/analysis/months";
 import { currentKeyOf, customRangeLabel, DEFAULT_RANGE, isCustomRange, pointsInRange, rangeOptions, type RangeId } from "@/lib/analysis/ranges";
-import { buildTimeline, pickReferenceMonth, summarizePeriod, viewPoints } from "@/lib/analysis/timeline";
+import { buildTimeline, pickReferenceMonth, savingsBefore, summarizePeriod, viewPoints } from "@/lib/analysis/timeline";
 import type { AnalysisMonth } from "@/lib/analysis/types";
 import { CategoryBreakdown } from "./category-breakdown";
 import { InstallmentsPanel } from "./installments-panel";
@@ -55,6 +55,15 @@ export function AnalysisView({ months, now, initialBalance }: AnalysisViewProps)
   const summary = useMemo(() => summarizePeriod(visible, withSavings), [visible, withSavings]);
   const shown = useMemo(() => viewPoints(visible, withSavings), [visible, withSavings]);
   const selectedPoint = useMemo(() => visible.find((point) => point.key === selectedKey) ?? null, [visible, selectedKey]);
+  // What was already saved when the period (and the selected month) starts, so a later period builds on everything before it.
+  const periodOpening = useMemo(
+    () => (visible.length > 0 ? savingsBefore(timeline, visible[0].key, initialBalance) : null),
+    [timeline, visible, initialBalance],
+  );
+  const monthOpening = useMemo(
+    () => (selectedPoint ? savingsBefore(timeline, selectedPoint.key, initialBalance) : null),
+    [timeline, selectedPoint, initialBalance],
+  );
   // Months of the period with a tab: the only ones that have categories.
   const periodKeys = useMemo(() => visible.filter((point) => point.source === "sheet").map((point) => point.key), [visible]);
   const projectedKeys = useMemo(() => new Set(visible.filter((point) => point.projected).map((point) => point.key)), [visible]);
@@ -100,7 +109,14 @@ export function AnalysisView({ months, now, initialBalance }: AnalysisViewProps)
             <>
               <section className="flex flex-col gap-3">
                 <SectionHeader title="Resumo" scope={monthLabel ?? periodLabel} />
-                <SummaryCards scope={scope} summary={summary} point={selectedPoint} withSavings={withSavings} initialBalance={initialBalance} />
+                <SummaryCards
+                  scope={scope}
+                  summary={summary}
+                  point={selectedPoint}
+                  withSavings={withSavings}
+                  opening={(scope === "month" ? monthOpening : periodOpening) ?? { total: initialBalance, through: null }}
+                  last={visible[visible.length - 1]}
+                />
               </section>
               <section className="flex flex-col gap-3">
                 <SectionHeader title="Evolução mês a mês" scope={periodLabel} />
@@ -109,7 +125,7 @@ export function AnalysisView({ months, now, initialBalance }: AnalysisViewProps)
                   selectedKey={selectedKey}
                   onSelect={setHighlightKey}
                   withSavings={withSavings}
-                  initialBalance={initialBalance}
+                  opening={periodOpening}
                 />
               </section>
               {/* Each section takes the full width, one after the other. */}

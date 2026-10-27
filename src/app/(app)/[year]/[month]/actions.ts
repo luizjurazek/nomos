@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
+import { readBalanceTransferPlan, writeBalanceTransfer } from "@/lib/sheets/balanceTransferPlan";
 import { syncCardRollover } from "@/lib/sheets/cardRollover";
 import { createRow, createRows, createRowsAcrossMonths, deleteRow, updateCell, updateRow } from "@/lib/sheets/writeRow";
 import { getSpreadsheetId } from "@/lib/sheets/spreadsheetRegistry";
@@ -187,4 +188,23 @@ export async function syncCardRolloverAction(year: string, month: string): Promi
   const spreadsheetId = getSpreadsheetId(year);
   const changed = await syncCardRollover(spreadsheetId, year, month);
   if (changed) revalidateMonth(year, month);
+}
+
+/**
+ * Moves the previous month's leftover (current balance and food voucher) into `month`. Plans again from a
+ * fresh read instead of trusting what the screen showed, so a double tap or a second device can't write
+ * the same transfer twice; a transfer that stopped halfway is finished from where it stopped.
+ */
+export async function applyBalanceTransferAction(year: string, month: string): Promise<{ error: string | null }> {
+  const plan = await readBalanceTransferPlan(year, month, { fresh: true });
+  if (!plan || plan.legs.length === 0) return { error: null };
+  try {
+    await writeBalanceTransfer(plan);
+    return { error: null };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Erro desconhecido ao escrever na planilha." };
+  } finally {
+    revalidateMonth(plan.from.year, plan.from.month);
+    revalidateMonth(plan.to.year, plan.to.month);
+  }
 }

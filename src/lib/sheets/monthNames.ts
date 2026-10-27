@@ -57,6 +57,11 @@ export function getCurrentYearMonth(now: Date = new Date()): { year: number; mon
   return { year: value("year"), monthIndex: value("month") - 1 };
 }
 
+/** Day of the month (1-31) of `now` in the app's timezone. */
+export function getCurrentDayOfMonth(now: Date = new Date()): number {
+  return Number(new Intl.DateTimeFormat("en-CA", { timeZone: APP_TIME_ZONE, day: "numeric" }).format(now));
+}
+
 /**
  * The month tab to land on: the one for `targetMonthIndex` when it exists, otherwise the latest tab before it
  * (a sheet may not have every month yet), otherwise the first tab. `months` must be chronologically ordered.

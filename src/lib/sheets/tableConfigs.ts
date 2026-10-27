@@ -113,3 +113,12 @@ export const CARD_ROLLOVER_DEFAULT_QUEM: string = "Luiz e Jéssica";
  * discount forward too. See `createEntry` in `actions.ts`, which creates that mirrored row.
  */
 export const CARD_ADJUSTMENT_CATEGORY = "Abatimento cartão de crédito";
+
+/**
+ * Month-end balance moved into the next month (see `balanceTransfer.ts`): a paid débito in the month it
+ * leaves, so that month closes at zero, and an entrada in the month it lands in. Money changing months,
+ * not income or spending, so the analysis leaves both out. Must match the "Dados" tab's spelling, so the
+ * rows the app writes show up in the category dropdowns.
+ */
+export const BALANCE_CARRIED_IN_CATEGORY = "Saldo mês anterior";
+export const BALANCE_CARRIED_OUT_CATEGORY = "Saldo próximo mês";
