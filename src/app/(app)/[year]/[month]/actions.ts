@@ -24,7 +24,7 @@ export async function createEntry(
 ): Promise<void> {
   const spreadsheetId = getSpreadsheetId(year);
   await createRow(spreadsheetId, month, tableId, valuesByRole);
-  // A card discount also gets a matching negative line in this month's Nubank, so next month's
+  // A card discount (positive débito: money left the account) also gets a negative line in this month's Nubank, so next month's
   // auto-sync (which sums this month's Nubank total) carries the discount forward on its own.
   if (tableId === "debitos" && valuesByRole.category === CARD_ADJUSTMENT_CATEGORY) {
     await createRow(spreadsheetId, month, "nubank", {
@@ -32,7 +32,7 @@ export async function createEntry(
       name: valuesByRole.name,
       category: CARD_ADJUSTMENT_CATEGORY,
       quem: valuesByRole.quem,
-      valor: valuesByRole.valor,
+      valor: -Math.abs(Number(valuesByRole.valor ?? 0)),
     });
   }
   revalidateMonth(year, month);
@@ -70,7 +70,7 @@ export async function createEntries(year: string, month: string, entries: BatchE
         name: entry.values.name,
         category: CARD_ADJUSTMENT_CATEGORY,
         quem: entry.values.quem,
-        valor: entry.values.valor,
+        valor: -Math.abs(Number(entry.values.valor ?? 0)),
       });
     }
   }

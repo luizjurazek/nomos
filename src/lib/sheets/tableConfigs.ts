@@ -107,8 +107,8 @@ export const CARD_ROLLOVER_DEFAULT_NAME = "Nubank";
 export const CARD_ROLLOVER_DEFAULT_QUEM: string = "Luiz e Jéssica";
 
 /**
- * A manual discount on the card bill (cashback, dispute won...). Booked as its own débito (always
- * negative, corrects the month's own already-synced bill) and mirrored into Nubank with the same
+ * A manual discount on the card bill (cashback, dispute won...). Booked as its own débito (positive,
+ * since the money left the account; corrects the month's own already-synced bill) and mirrored into Nubank as a
  * negative value, so next month's auto-sync — which sums this month's Nubank table — carries the
  * discount forward too. See `createEntry` in `actions.ts`, which creates that mirrored row.
  */

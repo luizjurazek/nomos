@@ -62,9 +62,9 @@ export function viewPoints(points: MonthPoint[], withSavings: boolean): MonthPoi
 /** Longest stretch of months, past the last tab, that we project card bills for. */
 const PROJECTION_HORIZON = 12;
 
-/** Manual discounts on the card bill (cashback, dispute won...) booked in `month`, always negative. */
+/** Manual discounts on the card bill (cashback, dispute won...) booked in `month`, as a positive amount (abs also covers older rows stored negative). */
 function cardAdjustment(month: AnalysisMonth): number {
-  return sumValues(month.debitos.filter((row) => row.isCardAdjustment));
+  return month.debitos.filter((row) => row.isCardAdjustment).reduce((total, row) => total + Math.abs(row.valor), 0);
 }
 
 /**
@@ -77,8 +77,8 @@ function cardBillFor(byKey: Map<string, AnalysisMonth>, month: AnalysisMonth): n
   const adjustment = cardAdjustment(month);
   const previous = previousRef(month);
   const previousMonth = previous ? byKey.get(monthKey(previous)) : undefined;
-  if (previousMonth) return sumValues(previousMonth.nubank) + adjustment;
-  return sumValues(month.debitos.filter((row) => row.isCardRollover)) + adjustment;
+  if (previousMonth) return sumValues(previousMonth.nubank) - adjustment;
+  return sumValues(month.debitos.filter((row) => row.isCardRollover)) - adjustment;
 }
 
 /**

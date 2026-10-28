@@ -90,7 +90,7 @@ export function EntryFormDialog({
   const theme = TABLE_THEME[tableId];
   const [values, setValues] = useState<Record<ColumnRole, SheetCell>>(() => {
     const merged = { ...defaultValues(year, month), ...initialValues };
-    // Stored negative (débito or Nubank), but the field always shows/takes a plain magnitude (see isCardAdjustment).
+    // Débito is stored positive and Nubank negative, but the field always shows/takes a plain magnitude (see isCardAdjustment).
     if ((initialTableId === "debitos" || initialTableId === "nubank") && merged.category === CARD_ADJUSTMENT_CATEGORY) {
       merged.valor = Math.abs(Number(merged.valor ?? 0));
     }
@@ -106,7 +106,7 @@ export function EntryFormDialog({
   // several different entries becoming one write (same month) are different code paths to combine.
   const showInstallments = config.bulkInstallments && !isEdit && stagedEntries.length === 0;
   const canStageAnother = !isEdit && installments <= 1;
-  // The currency input can't type a "-": for this category the typed amount is negated on save instead.
+  // The currency input can't type a "-": for this category the sign is applied on save instead.
   const isCardAdjustment = (tableId === "debitos" || tableId === "nubank") && values.category === CARD_ADJUSTMENT_CATEGORY;
   const hasDraftContent = String(values.name ?? "").trim().length > 0;
 
@@ -128,7 +128,12 @@ export function EntryFormDialog({
     return true;
   };
 
-  const currentEntryValues = () => (isCardAdjustment ? { ...values, valor: -Math.abs(Number(values.valor ?? 0)) } : values);
+  // Débito: positive (money left the account to pay the card). Nubank: negative (reduces the card total).
+  const currentEntryValues = () => {
+    if (!isCardAdjustment) return values;
+    const magnitude = Math.abs(Number(values.valor ?? 0));
+    return { ...values, valor: tableId === "nubank" ? -magnitude : magnitude };
+  };
 
   const handleAddAnother = () => {
     if (!validate()) return;
@@ -191,7 +196,7 @@ export function EntryFormDialog({
             </DialogDescription>
           </div>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex min-w-0 flex-col gap-4">
           {isVoucherCreate && (
             <div className="flex flex-col gap-2">
               <Label className="max-sm:text-base">Tipo</Label>
@@ -216,8 +221,8 @@ export function EntryFormDialog({
               </span>
               <ul className="flex flex-col gap-1.5">
                 {stagedEntries.map((entry, index) => (
-                  <li key={index} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="min-w-0 truncate">{String(entry.values.name ?? "")}</span>
+                  <li key={index} className="flex items-start justify-between gap-2 text-sm">
+                    <span className="min-w-0 break-words">{String(entry.values.name ?? "")}</span>
                     <div className="flex shrink-0 items-center gap-2">
                       <span className="tabular-nums text-foreground-secondary">
                         {formatCurrency(Number(entry.values.valor ?? 0))}
@@ -305,7 +310,7 @@ export function EntryFormDialog({
                   />
                   {isCardAdjustment && tableId === "debitos" && (
                     <span className="text-xs text-foreground-secondary">
-                      Lançado como valor negativo: reduz a fatura deste mês, e cria automaticamente a mesma linha no Nubank, o que também desconta a fatura do mês seguinte.
+                      Lançado como débito (valor positivo: saiu da conta) e reduz a fatura deste mês. Cria automaticamente uma linha negativa no Nubank, o que também desconta a fatura do mês seguinte.
                     </span>
                   )}
                   {isCardAdjustment && tableId === "nubank" && (
